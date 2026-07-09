@@ -1,4 +1,5 @@
-import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { Actor } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -36,7 +37,7 @@ export async function updateActor(
   actors[actorIndex] = { ...actors[actorIndex], ...updates };
 
   const actorsPath = getDataPath(projectPath, 'Actors.json');
-  await writeJsonFile(actorsPath, actors);
+  await commitChange(actorsPath, actors);
 
   return actors[actorIndex];
 }
@@ -64,7 +65,7 @@ export async function createActor(
   actors.push(newActor);
 
   const actorsPath = getDataPath(projectPath, 'Actors.json');
-  await writeJsonFile(actorsPath, actors);
+  await commitChange(actorsPath, actors);
 
   return newActor;
 }
@@ -83,7 +84,7 @@ export async function deleteActor(projectPath: string, actorId: number): Promise
   actors[actorIndex] = null as any;
 
   const actorsPath = getDataPath(projectPath, 'Actors.json');
-  await writeJsonFile(actorsPath, actors);
+  await commitChange(actorsPath, actors);
 
   return true;
 }
@@ -122,6 +123,7 @@ export const actorToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_actor',
+    mutates: true,
     description: "Update an actor's properties",
     inputSchema: {
       type: 'object',
@@ -135,6 +137,7 @@ export const actorToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_actor',
+    mutates: true,
     description: 'Create a new actor',
     inputSchema: {
       type: 'object',

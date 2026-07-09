@@ -1,4 +1,5 @@
-import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { SystemData } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -21,7 +22,7 @@ export async function updateSystem(
   const updatedSystem = { ...system, ...updates };
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, updatedSystem);
+  await commitChange(systemPath, updatedSystem);
 
   return updatedSystem;
 }
@@ -46,7 +47,7 @@ export async function setVariableName(
   system.variables[variableId] = name;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -69,7 +70,7 @@ export async function setSwitchName(
   system.switches[switchId] = name;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -91,7 +92,7 @@ export async function updatePartyMembers(
   system.partyMembers = partyMembers;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -123,7 +124,7 @@ export async function updateStartingPosition(
   system.startY = y;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -142,7 +143,7 @@ export async function updateGameTitle(projectPath: string, title: string): Promi
   system.gameTitle = title;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -165,7 +166,7 @@ export async function updateBasicTerm(
   system.terms.basic[index] = value;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 /**
@@ -180,7 +181,7 @@ export async function updateCommandTerm(
   system.terms.commands[index] = value;
 
   const systemPath = getDataPath(projectPath, 'System.json');
-  await writeJsonFile(systemPath, system);
+  await commitChange(systemPath, system);
 }
 
 export const systemToolDefinitions: ToolDefinition[] = [
@@ -198,6 +199,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'set_variable_name',
+    mutates: true,
     description: 'Set a variable name',
     inputSchema: {
       type: 'object',
@@ -217,6 +219,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'set_switch_name',
+    mutates: true,
     description: 'Set a switch name',
     inputSchema: {
       type: 'object',
@@ -236,6 +239,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_game_title',
+    mutates: true,
     description: 'Update the game title',
     inputSchema: {
       type: 'object',
@@ -249,6 +253,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_starting_position',
+    mutates: true,
     description: 'Update the game starting position',
     inputSchema: {
       type: 'object',

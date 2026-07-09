@@ -20,14 +20,42 @@ export interface ToolDefinition {
   description: string;
   inputSchema: Tool['inputSchema'];
   handler: (ctx: ToolContext, args: Record<string, any>) => Promise<unknown>;
+  /**
+   * True for tools that write to the project. Such tools accept a `dryRun`
+   * argument (injected into their advertised schema by `toTool`) and are run
+   * inside a commit context so the write can be previewed instead of applied.
+   */
+  mutates?: boolean;
 }
 
-/** Strip the handler to produce the MCP-facing `Tool` schema. */
+const DRY_RUN_PROPERTY = {
+  type: 'boolean',
+  description: 'Preview only: return a diff of what would change without writing to disk.',
+} as const;
+
+/**
+ * Strip the handler to produce the MCP-facing `Tool` schema. For mutating tools,
+ * advertise the shared `dryRun` argument so clients can discover it.
+ */
 export function toTool(def: ToolDefinition): Tool {
+  if (!def.mutates) {
+    return {
+      name: def.name,
+      description: def.description,
+      inputSchema: def.inputSchema,
+    };
+  }
+
   return {
     name: def.name,
     description: def.description,
-    inputSchema: def.inputSchema,
+    inputSchema: {
+      ...def.inputSchema,
+      properties: {
+        ...(def.inputSchema.properties ?? {}),
+        dryRun: DRY_RUN_PROPERTY,
+      },
+    },
   };
 }
 

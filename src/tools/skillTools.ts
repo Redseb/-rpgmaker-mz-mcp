@@ -1,4 +1,5 @@
-import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { Skill } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -91,7 +92,7 @@ export async function createSkill(
   skills.push(newSkill);
 
   const skillsPath = getDataPath(projectPath, 'Skills.json');
-  await writeJsonFile(skillsPath, skills);
+  await commitChange(skillsPath, skills);
 
   return newSkill;
 }
@@ -114,7 +115,7 @@ export async function updateSkill(
   skills[skillIndex] = { ...skills[skillIndex], ...updates };
 
   const skillsPath = getDataPath(projectPath, 'Skills.json');
-  await writeJsonFile(skillsPath, skills);
+  await commitChange(skillsPath, skills);
 
   return skills[skillIndex];
 }
@@ -138,7 +139,7 @@ export async function deleteSkill(projectPath: string, skillId: number): Promise
   skills[skillIndex] = null as any;
 
   const skillsPath = getDataPath(projectPath, 'Skills.json');
-  await writeJsonFile(skillsPath, skills);
+  await commitChange(skillsPath, skills);
 
   return true;
 }
@@ -333,6 +334,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_skill',
+    mutates: true,
     description: 'Create a new skill with custom properties',
     inputSchema: {
       type: 'object',
@@ -378,6 +380,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_damage_skill',
+    mutates: true,
     description: 'Create a damage-dealing skill (simplified)',
     inputSchema: {
       type: 'object',
@@ -407,6 +410,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_healing_skill',
+    mutates: true,
     description: 'Create a healing skill (simplified)',
     inputSchema: {
       type: 'object',
@@ -431,6 +435,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_buff_skill',
+    mutates: true,
     description: 'Create a buff skill (simplified)',
     inputSchema: {
       type: 'object',
@@ -457,6 +462,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_state_skill',
+    mutates: true,
     description: 'Create a state-inflicting skill (poison, sleep, etc.)',
     inputSchema: {
       type: 'object',
@@ -486,6 +492,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_skill',
+    mutates: true,
     description: "Update a skill's properties",
     inputSchema: {
       type: 'object',

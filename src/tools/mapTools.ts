@@ -1,4 +1,5 @@
-import { readJsonFile, writeJsonFile, getMapPath, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getMapPath, getDataPath } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { MapData, MapEvent, EventCommand } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -30,7 +31,7 @@ export async function updateMap(
   const updatedMap = { ...map, ...updates };
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, updatedMap);
+  await commitChange(mapPath, updatedMap);
 
   return updatedMap;
 }
@@ -76,7 +77,7 @@ export async function updateMapEvent(
   map.events[eventId] = { ...map.events[eventId]!, ...updates };
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, map);
+  await commitChange(mapPath, map);
 
   return map.events[eventId]!;
 }
@@ -105,7 +106,7 @@ export async function createMapEvent(
   map.events[maxId + 1] = newEvent;
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, map);
+  await commitChange(mapPath, map);
 
   return newEvent;
 }
@@ -127,7 +128,7 @@ export async function deleteMapEvent(
   map.events[eventId] = null;
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, map);
+  await commitChange(mapPath, map);
 
   return true;
 }
@@ -182,7 +183,7 @@ export async function addEventCommand(
   }
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, map);
+  await commitChange(mapPath, map);
 
   return event;
 }
@@ -224,7 +225,7 @@ export async function setMapTile(
   map.data[index] = tileId;
 
   const mapPath = getMapPath(projectPath, mapId);
-  await writeJsonFile(mapPath, map);
+  await commitChange(mapPath, map);
 }
 
 /**
@@ -283,6 +284,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_map_event',
+    mutates: true,
     description: "Update a map event's properties",
     inputSchema: {
       type: 'object',
@@ -297,6 +299,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'create_map_event',
+    mutates: true,
     description: 'Create a new event on a map',
     inputSchema: {
       type: 'object',
@@ -325,6 +328,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'add_event_command',
+    mutates: true,
     description: 'Add a command to an event page',
     inputSchema: {
       type: 'object',
@@ -356,6 +360,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_map',
+    mutates: true,
     description:
       "Update a map's top-level properties (name, display name, dimensions, bgm, etc.). Does not repaint tiles.",
     inputSchema: {
@@ -380,6 +385,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'set_map_tile',
+    mutates: true,
     description:
       'Set a single raw tile ID at (x, y) on a given z-layer (0-5). Note: tile IDs are raw engine integers; this is a low-level primitive without autotile/passability awareness.',
     inputSchema: {
@@ -403,6 +409,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'delete_map_event',
+    mutates: true,
     description: 'Delete an event from a map by ID',
     inputSchema: {
       type: 'object',

@@ -4,8 +4,11 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
+import { basename } from 'path';
+
 import { validateProjectPath } from './utils/fileHandler.js';
-import { ToolDefinition, buildRegistry, toTool } from './registry.js';
+import { ToolContext, ToolDefinition, buildRegistry, toTool } from './registry.js';
+import { CommitContext, commitStore } from './utils/commit.js';
 import { allToolDefinitions } from './tools/allTools.js';
 
 /**
@@ -76,10 +79,9 @@ class RPGMakerMZServer {
           throw new Error(`Unknown tool: ${request.params.name}`);
         }
 
-        const result = await tool.handler(
-          { projectPath: this.projectPath },
-          request.params.arguments || {},
-        );
+        const ctx = { projectPath: this.projectPath };
+        const args = request.params.arguments || {};
+        const result = await this.runTool(tool, ctx, args);
 
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -91,6 +93,38 @@ class RPGMakerMZServer {
         };
       }
     });
+  }
+
+  /**
+   * Run a tool. Mutating tools execute inside a commit context so that, when
+   * `dryRun` is requested, every write is intercepted and returned as a preview
+   * diff instead of being applied.
+   */
+  private async runTool(
+    tool: ToolDefinition,
+    ctx: ToolContext,
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!tool.mutates) {
+      return tool.handler(ctx, args);
+    }
+
+    const dryRun = args.dryRun === true;
+    const commitCtx: CommitContext = { dryRun, commits: [] };
+    const result = await commitStore.run(commitCtx, () => tool.handler(ctx, args));
+
+    if (!dryRun) {
+      return result;
+    }
+
+    return {
+      dryRun: true,
+      wouldChange: commitCtx.commits.map((commit) => ({
+        file: basename(commit.path),
+        changed: commit.changed,
+        diff: commit.diff,
+      })),
+    };
   }
 
   async run(): Promise<void> {

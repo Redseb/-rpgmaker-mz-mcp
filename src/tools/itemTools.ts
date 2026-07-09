@@ -1,4 +1,5 @@
-import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { Item, Weapon, Armor, Skill } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -60,7 +61,7 @@ export async function updateItem(
   items[itemIndex] = { ...items[itemIndex], ...updates };
 
   const itemsPath = getDataPath(projectPath, 'Items.json');
-  await writeJsonFile(itemsPath, items);
+  await commitChange(itemsPath, items);
 
   return items[itemIndex];
 }
@@ -84,7 +85,7 @@ export async function createItem(projectPath: string, itemData: Omit<Item, 'id'>
   items.push(newItem);
 
   const itemsPath = getDataPath(projectPath, 'Items.json');
-  await writeJsonFile(itemsPath, items);
+  await commitChange(itemsPath, items);
 
   return newItem;
 }
@@ -107,7 +108,7 @@ export async function updateWeapon(
   weapons[weaponIndex] = { ...weapons[weaponIndex], ...updates };
 
   const weaponsPath = getDataPath(projectPath, 'Weapons.json');
-  await writeJsonFile(weaponsPath, weapons);
+  await commitChange(weaponsPath, weapons);
 
   return weapons[weaponIndex];
 }
@@ -130,7 +131,7 @@ export async function updateArmor(
   armors[armorIndex] = { ...armors[armorIndex], ...updates };
 
   const armorsPath = getDataPath(projectPath, 'Armors.json');
-  await writeJsonFile(armorsPath, armors);
+  await commitChange(armorsPath, armors);
 
   return armors[armorIndex];
 }
@@ -153,7 +154,7 @@ export async function updateSkill(
   skills[skillIndex] = { ...skills[skillIndex], ...updates };
 
   const skillsPath = getDataPath(projectPath, 'Skills.json');
-  await writeJsonFile(skillsPath, skills);
+  await commitChange(skillsPath, skills);
 
   return skills[skillIndex];
 }
@@ -200,6 +201,7 @@ export const itemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'update_item',
+    mutates: true,
     description: "Update an item's properties",
     inputSchema: {
       type: 'object',

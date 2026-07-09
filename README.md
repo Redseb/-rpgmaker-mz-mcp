@@ -131,6 +131,28 @@ Add to your Claude Desktop configuration file:
 
 - `list_names` - Cheap names-only `{ id, name }` index for a table (actors, items, weapons, armors, skills, or maps) — for looking up IDs without a full record dump
 
+## Dry-run preview
+
+Every tool that writes to the project accepts an optional `dryRun` argument. When `dryRun: true`, the tool computes what it _would_ write and returns a diff instead of touching any files:
+
+```json
+{
+  "dryRun": true,
+  "wouldChange": [
+    {
+      "file": "System.json",
+      "changed": true,
+      "diff": {
+        "changes": [{ "path": "gameTitle", "from": "Old Title", "to": "New Title" }],
+        "truncated": false
+      }
+    }
+  ]
+}
+```
+
+This is useful for previewing destructive edits (e.g. `update_map_event`, which replaces whole event pages) before committing them. All writes go through a single choke point that also skips no-op writes and keeps the on-disk JSON in the editor's compact format.
+
 ## Example Usage
 
 Once configured, you can use Claude to interact with your RPG Maker MZ project:
