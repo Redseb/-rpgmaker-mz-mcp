@@ -37,7 +37,7 @@ export async function writeJsonFile(filePath: string, data: any): Promise<void> 
 export async function listFiles(dirPath: string, extension: string): Promise<string[]> {
   try {
     const files = await readdir(dirPath);
-    return files.filter(file => extname(file) === extension);
+    return files.filter((file) => extname(file) === extension);
   } catch (error) {
     throw new Error(`Failed to list files in ${dirPath}: ${error}`);
   }

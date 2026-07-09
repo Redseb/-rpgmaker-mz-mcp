@@ -23,7 +23,7 @@ export async function getMapInfos(projectPath: string): Promise<any[]> {
 export async function updateMap(
   projectPath: string,
   mapId: number,
-  updates: Partial<MapData>
+  updates: Partial<MapData>,
 ): Promise<MapData> {
   const map = await getMap(projectPath, mapId);
   const updatedMap = { ...map, ...updates };
@@ -37,7 +37,10 @@ export async function updateMap(
 /**
  * Get events from a specific map
  */
-export async function getMapEvents(projectPath: string, mapId: number): Promise<(MapEvent | null)[]> {
+export async function getMapEvents(
+  projectPath: string,
+  mapId: number,
+): Promise<(MapEvent | null)[]> {
   const map = await getMap(projectPath, mapId);
   return map.events;
 }
@@ -48,7 +51,7 @@ export async function getMapEvents(projectPath: string, mapId: number): Promise<
 export async function getMapEvent(
   projectPath: string,
   mapId: number,
-  eventId: number
+  eventId: number,
 ): Promise<MapEvent | null> {
   const events = await getMapEvents(projectPath, mapId);
   return events[eventId] || null;
@@ -61,7 +64,7 @@ export async function updateMapEvent(
   projectPath: string,
   mapId: number,
   eventId: number,
-  updates: Partial<MapEvent>
+  updates: Partial<MapEvent>,
 ): Promise<MapEvent> {
   const map = await getMap(projectPath, mapId);
 
@@ -83,7 +86,7 @@ export async function updateMapEvent(
 export async function createMapEvent(
   projectPath: string,
   mapId: number,
-  eventData: Omit<MapEvent, 'id'>
+  eventData: Omit<MapEvent, 'id'>,
 ): Promise<MapEvent> {
   const map = await getMap(projectPath, mapId);
 
@@ -94,7 +97,7 @@ export async function createMapEvent(
 
   const newEvent: MapEvent = {
     id: maxId + 1,
-    ...eventData
+    ...eventData,
   };
 
   map.events[maxId + 1] = newEvent;
@@ -111,7 +114,7 @@ export async function createMapEvent(
 export async function deleteMapEvent(
   projectPath: string,
   mapId: number,
-  eventId: number
+  eventId: number,
 ): Promise<boolean> {
   const map = await getMap(projectPath, mapId);
 
@@ -133,13 +136,13 @@ export async function deleteMapEvent(
 export async function searchMapEvents(
   projectPath: string,
   mapId: number,
-  searchTerm: string
+  searchTerm: string,
 ): Promise<MapEvent[]> {
   const events = await getMapEvents(projectPath, mapId);
   const lowerSearchTerm = searchTerm.toLowerCase();
 
-  return events.filter(event =>
-    event && event.name.toLowerCase().includes(lowerSearchTerm)
+  return events.filter(
+    (event) => event && event.name.toLowerCase().includes(lowerSearchTerm),
   ) as MapEvent[];
 }
 
@@ -152,7 +155,7 @@ export async function addEventCommand(
   eventId: number,
   pageIndex: number,
   command: EventCommand,
-  position?: number
+  position?: number,
 ): Promise<MapEvent> {
   const map = await getMap(projectPath, mapId);
 
@@ -187,12 +190,12 @@ export async function addEventCommand(
  */
 export async function getMapDimensions(
   projectPath: string,
-  mapId: number
+  mapId: number,
 ): Promise<{ width: number; height: number }> {
   const map = await getMap(projectPath, mapId);
   return {
     width: map.width,
-    height: map.height
+    height: map.height,
   };
 }
 
@@ -205,7 +208,7 @@ export async function setMapTile(
   x: number,
   y: number,
   layer: number,
-  tileId: number
+  tileId: number,
 ): Promise<void> {
   const map = await getMap(projectPath, mapId);
 

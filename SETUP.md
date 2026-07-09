@@ -53,9 +53,11 @@ You need to add the MCP server to Claude Desktop's configuration file.
 #### Windows
 
 1. Open File Explorer and navigate to:
+
    ```
    %APPDATA%\Claude\
    ```
+
    (or `C:\Users\YourUsername\AppData\Roaming\Claude\`)
 
 2. Open or create `claude_desktop_config.json`
@@ -67,9 +69,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
   "mcpServers": {
     "rpgmaker-mz": {
       "command": "node",
-      "args": [
-        "/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"
-      ],
+      "args": ["/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"],
       "env": {
         "RPGMAKER_PROJECT_PATH": "C:/path/to/your/rpgmaker/project"
       }
@@ -79,6 +79,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
 ```
 
 **Important**:
+
 - Replace the path in `args` with the actual path to your `dist/index.js`
 - Replace `RPGMAKER_PROJECT_PATH` with the path to your RPG Maker MZ project
 - Use forward slashes (`/`) in paths, even on Windows
@@ -86,6 +87,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
 #### macOS
 
 1. Open Terminal and edit the configuration file:
+
    ```bash
    nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
    ```
@@ -97,9 +99,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
   "mcpServers": {
     "rpgmaker-mz": {
       "command": "node",
-      "args": [
-        "/path/to/rpgmaker-mz-mcp/dist/index.js"
-      ],
+      "args": ["/path/to/rpgmaker-mz-mcp/dist/index.js"],
       "env": {
         "RPGMAKER_PROJECT_PATH": "/path/to/your/rpgmaker/project"
       }
@@ -113,6 +113,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
 #### Linux
 
 1. Edit the configuration file:
+
    ```bash
    nano ~/.config/Claude/claude_desktop_config.json
    ```
@@ -122,12 +123,14 @@ You need to add the MCP server to Claude Desktop's configuration file.
 ### Step 5: Find Your RPG Maker MZ Project Path
 
 Your RPG Maker MZ project path should contain:
+
 - `game.rmmzproject` file
 - `data/` directory
 - `js/` directory
 - `img/` directory
 
 Example paths:
+
 - Windows: `C:/Users/YourName/Documents/RPGMZ/MyGame`
 - macOS: `/Users/YourName/Documents/RPGMZ/MyGame`
 - Linux: `/home/YourName/Documents/RPGMZ/MyGame`
@@ -171,6 +174,7 @@ Claude should list all actors from your RPG Maker MZ project.
 ### Issue: "rpgmaker-mz server not found"
 
 **Solution**:
+
 1. Verify the path in `claude_desktop_config.json` is correct
 2. Make sure you restarted Claude Desktop
 3. Check that `dist/index.js` exists
@@ -178,6 +182,7 @@ Claude should list all actors from your RPG Maker MZ project.
 ### Issue: "Invalid RPG Maker MZ project path"
 
 **Solution**:
+
 1. Verify `RPGMAKER_PROJECT_PATH` points to a valid RPG Maker MZ project
 2. Check that the project contains `game.rmmzproject` and `data/System.json`
 3. Make sure the path uses forward slashes (`/`) even on Windows
@@ -185,6 +190,7 @@ Claude should list all actors from your RPG Maker MZ project.
 ### Issue: "ENOENT: no such file or directory"
 
 **Solution**:
+
 1. Close RPG Maker MZ editor (files may be locked)
 2. Check file permissions
 3. Verify the project path is correct
@@ -192,6 +198,7 @@ Claude should list all actors from your RPG Maker MZ project.
 ### Issue: "Cannot find module"
 
 **Solution**:
+
 1. Run `npm install` again
 2. Run `npm run build` to rebuild
 3. Check that `node_modules/` directory exists
@@ -199,6 +206,7 @@ Claude should list all actors from your RPG Maker MZ project.
 ### Issue: Server starts but tools don't work
 
 **Solution**:
+
 1. Check Claude Desktop logs:
    - Windows: `%APPDATA%\Claude\logs\`
    - macOS: `~/Library/Logs/Claude/`
@@ -227,9 +235,7 @@ Then your config becomes:
   "mcpServers": {
     "rpgmaker-mz": {
       "command": "node",
-      "args": [
-        "/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"
-      ]
+      "args": ["/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"]
     }
   }
 }
@@ -285,6 +291,7 @@ This will automatically rebuild when you save changes to TypeScript files.
 ### Debugging
 
 Add console.log statements in your code. Logs will appear in:
+
 - Claude Desktop logs directory
 - Or run the server directly in terminal for debugging:
 

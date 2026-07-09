@@ -1,20 +1,20 @@
 # RPG Maker MZ MCP Server
 
-A high-quality Model Context Protocol (MCP) server for RPG Maker MZ integration. This server provides comprehensive tools for managing game data, maps, events, and system settings through the MCP protocol.
+A Model Context Protocol (MCP) server for RPG Maker MZ. It lets an AI assistant read and write an RPG Maker MZ project's database and map data directly — actors, items, skills, map events, and system settings — instead of hand-editing everything in the editor.
+
+> **Fork notice.** This is a fork of [k4zuki0539/-rpgmaker-mz-mcp](https://github.com/k4zuki0539/-rpgmaker-mz-mcp) (MIT). It builds on that project's CRUD scaffolding toward richer level-design capabilities. See [Roadmap](#roadmap) for what's planned.
 
 ## Features
 
 - **Actor Management**: Create, read, update, and search actors
 - **Item/Equipment Management**: Manage items, weapons, armors, and skills
-- **Skill Creation**: Create custom skills with natural language (NEW!)
+- **Skill Creation**: Create custom skills from natural language
   - Damage skills, healing skills, buffs, debuffs, status effects
-  - Simplified helpers for common skill types
-  - Full customization support
-- **Map Management**: Access and modify map data, tiles, and properties
-- **Event Management**: Create, update, and manage map events and commands
-- **System Configuration**: Update game settings, variables, switches, and vocabulary
-- **Type Safety**: Full TypeScript support with comprehensive type definitions
-- **Error Handling**: Robust error handling and validation
+  - Simplified helpers for common skill types, plus a full-control tool
+- **Map Management**: Read map data, edit map properties, set individual tiles
+- **Event Management**: Create, update, delete, and script map events
+- **System Configuration**: Update game settings, variables, and switches
+- **Type Safety**: TypeScript throughout, with typed RPG Maker MZ data structures
 
 ## Installation
 
@@ -90,7 +90,7 @@ Add to your Claude Desktop configuration file:
 - `update_item` - Update an item's properties
 - `search_items` - Search items by name or description
 
-### Skill Tools (NEW!)
+### Skill Tools
 
 - `get_skill` - Get a specific skill by ID
 - `create_skill` - Create a custom skill with full control
@@ -254,37 +254,47 @@ For a complete list, refer to the RPG Maker MZ documentation.
 
 ## Development
 
-### Building
-
 ```bash
-npm run build
+npm run build         # Compile TypeScript to dist/
+npm run dev           # Compile in watch mode
+npm run lint          # ESLint
+npm run lint:fix      # ESLint with autofix
+npm run format        # Format with Prettier
+npm run format:check  # Check formatting (used in CI)
 ```
 
-### Watch Mode
-
-```bash
-npm run dev
-```
+CI runs lint, format check, and build on every push and pull request (see `.github/workflows/ci.yml`).
 
 ## Project Structure
 
 ```
 rpgmaker-mz-mcp/
 ├── src/
-│   ├── index.ts              # Main MCP server
+│   ├── index.ts              # MCP server: tool schemas + dispatch
 │   ├── tools/
-│   │   ├── actorTools.ts     # Actor management functions
-│   │   ├── itemTools.ts      # Item/equipment management
+│   │   ├── actorTools.ts     # Actor management
+│   │   ├── itemTools.ts      # Item/weapon/armor management
+│   │   ├── skillTools.ts     # Skill creation helpers
 │   │   ├── mapTools.ts       # Map and event management
-│   │   └── systemTools.ts    # System settings management
+│   │   └── systemTools.ts    # System settings, switches, variables
 │   └── utils/
-│       ├── fileHandler.ts    # File I/O utilities
-│       └── types.ts          # TypeScript type definitions
-├── dist/                     # Compiled JavaScript
+│       ├── fileHandler.ts    # JSON I/O + project path helpers
+│       └── types.ts          # RPG Maker MZ data type definitions
+├── dist/                     # Compiled JavaScript (gitignored)
+├── eslint.config.js
+├── .prettierrc.json
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
+
+## Roadmap
+
+This fork is being extended beyond the original CRUD tools toward full level-design support. Planned, roughly in dependency order:
+
+- **Correctness:** validation on write, lightweight names-only index tools, dry-run/diff previews, automatic pre-write backups.
+- **Missing subsystems:** multi-map support (`create_map` + map tree), class editor, enemy/troop tools, common events, move-route builder, plugin-command support.
+- **Tile painting (headline feature):** a semantic tile catalog, a deterministic autotile shape calculator, layer-aware paint commands across the six map layers, and passability/terrain-tag exposure.
 
 ## Safety and Best Practices
 
@@ -304,6 +314,7 @@ rpgmaker-mz-mcp/
 ### "Invalid RPG Maker MZ project path"
 
 Make sure the `RPGMAKER_PROJECT_PATH` environment variable points to a valid RPG Maker MZ project directory containing:
+
 - `game.rmmzproject` file
 - `data/` directory with `System.json`
 
@@ -320,6 +331,7 @@ Restart Claude Desktop after updating the configuration file.
 ## Contributing
 
 Contributions are welcome! Please ensure:
+
 - Code follows TypeScript best practices
 - All functions include proper error handling
 - Type definitions are updated for new features

@@ -38,7 +38,7 @@ export async function getSkills(projectPath: string): Promise<Skill[]> {
  */
 export async function getItem(projectPath: string, itemId: number): Promise<Item | null> {
   const items = await getItems(projectPath);
-  return items.find(item => item && item.id === itemId) || null;
+  return items.find((item) => item && item.id === itemId) || null;
 }
 
 /**
@@ -47,10 +47,10 @@ export async function getItem(projectPath: string, itemId: number): Promise<Item
 export async function updateItem(
   projectPath: string,
   itemId: number,
-  updates: Partial<Item>
+  updates: Partial<Item>,
 ): Promise<Item> {
   const items = await getItems(projectPath);
-  const itemIndex = items.findIndex(item => item && item.id === itemId);
+  const itemIndex = items.findIndex((item) => item && item.id === itemId);
 
   if (itemIndex === -1) {
     throw new Error(`Item with ID ${itemId} not found`);
@@ -67,10 +67,7 @@ export async function updateItem(
 /**
  * Create a new item
  */
-export async function createItem(
-  projectPath: string,
-  itemData: Omit<Item, 'id'>
-): Promise<Item> {
+export async function createItem(projectPath: string, itemData: Omit<Item, 'id'>): Promise<Item> {
   const items = await getItems(projectPath);
 
   const maxId = items.reduce((max, item) => {
@@ -79,7 +76,7 @@ export async function createItem(
 
   const newItem: Item = {
     id: maxId + 1,
-    ...itemData
+    ...itemData,
   };
 
   items.push(newItem);
@@ -96,10 +93,10 @@ export async function createItem(
 export async function updateWeapon(
   projectPath: string,
   weaponId: number,
-  updates: Partial<Weapon>
+  updates: Partial<Weapon>,
 ): Promise<Weapon> {
   const weapons = await getWeapons(projectPath);
-  const weaponIndex = weapons.findIndex(weapon => weapon && weapon.id === weaponId);
+  const weaponIndex = weapons.findIndex((weapon) => weapon && weapon.id === weaponId);
 
   if (weaponIndex === -1) {
     throw new Error(`Weapon with ID ${weaponId} not found`);
@@ -119,10 +116,10 @@ export async function updateWeapon(
 export async function updateArmor(
   projectPath: string,
   armorId: number,
-  updates: Partial<Armor>
+  updates: Partial<Armor>,
 ): Promise<Armor> {
   const armors = await getArmors(projectPath);
-  const armorIndex = armors.findIndex(armor => armor && armor.id === armorId);
+  const armorIndex = armors.findIndex((armor) => armor && armor.id === armorId);
 
   if (armorIndex === -1) {
     throw new Error(`Armor with ID ${armorId} not found`);
@@ -142,10 +139,10 @@ export async function updateArmor(
 export async function updateSkill(
   projectPath: string,
   skillId: number,
-  updates: Partial<Skill>
+  updates: Partial<Skill>,
 ): Promise<Skill> {
   const skills = await getSkills(projectPath);
-  const skillIndex = skills.findIndex(skill => skill && skill.id === skillId);
+  const skillIndex = skills.findIndex((skill) => skill && skill.id === skillId);
 
   if (skillIndex === -1) {
     throw new Error(`Skill with ID ${skillId} not found`);
@@ -166,10 +163,10 @@ export async function searchItems(projectPath: string, searchTerm: string): Prom
   const items = await getItems(projectPath);
   const lowerSearchTerm = searchTerm.toLowerCase();
 
-  return items.filter(item =>
-    item && (
-      item.name.toLowerCase().includes(lowerSearchTerm) ||
-      item.description.toLowerCase().includes(lowerSearchTerm)
-    )
+  return items.filter(
+    (item) =>
+      item &&
+      (item.name.toLowerCase().includes(lowerSearchTerm) ||
+        item.description.toLowerCase().includes(lowerSearchTerm)),
   );
 }

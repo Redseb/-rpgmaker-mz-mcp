@@ -24,6 +24,7 @@ Claude will use the `get_actors` tool and display all actors with their IDs, nam
 **User**: "Show me the details of actor 1"
 
 Claude will use the `get_actor` tool with actorId 1 and display complete information including:
+
 - Name and nickname
 - Class ID
 - Initial and max level
@@ -129,6 +130,7 @@ skill in natural language and Claude will pick the right tool.
 **User**: "Create a fire-element attack magic called 'Fireball'. MP 15, single enemy, damage `a.mat * 4 - b.mdf * 2`."
 
 Claude uses `create_damage_skill`:
+
 - `name` — skill name
 - `damageFormula` — damage formula
 - `mpCost` — MP cost
@@ -147,6 +149,7 @@ Claude uses `create_healing_skill` (`scope` 7 = all allies, 11 = user).
 **User**: "Create 'Attack Up' — MP 12, raises all allies' attack for 3 turns."
 
 Claude uses `create_buff_skill`:
+
 - `buffType` — 2 = ATK, 3 = DEF, 4 = MAT, 5 = MDF, 6 = AGI
 - `turns` — duration in turns
 
@@ -155,6 +158,7 @@ Claude uses `create_buff_skill`:
 **User**: "Create 'Poison Mist' — MP 10, 80% chance to poison all enemies."
 
 Claude uses `create_state_skill`:
+
 - `stateId` — 4 = poison, 5 = blind, 6 = silence, 8 = confusion, 10 = sleep, 12 = paralysis
 - `chance` — success chance (0.0–1.0)
 
@@ -184,57 +188,57 @@ For anything the helpers don't cover, use `create_skill` directly:
 
 **Scope (target)**
 
-| Value | Meaning |
-|-------|---------|
-| 0 | None |
-| 1 | One enemy |
-| 2 | All enemies |
-| 3–6 | Random enemy (1–4 targets) |
-| 7 | All allies |
-| 8 | All allies (incl. dead) |
-| 9 | One ally (dead) |
-| 10 | One ally |
-| 11 | The user |
+| Value | Meaning                    |
+| ----- | -------------------------- |
+| 0     | None                       |
+| 1     | One enemy                  |
+| 2     | All enemies                |
+| 3–6   | Random enemy (1–4 targets) |
+| 7     | All allies                 |
+| 8     | All allies (incl. dead)    |
+| 9     | One ally (dead)            |
+| 10    | One ally                   |
+| 11    | The user                   |
 
 **Element ID**
 
-| Value | Element | | Value | Element |
-|-------|---------|-|-------|---------|
-| 0 | None | | 5 | Water |
-| 1 | Physical | | 6 | Earth |
-| 2 | Fire | | 7 | Wind |
-| 3 | Ice | | 8 | Light |
-| 4 | Thunder | | 9 | Darkness |
+| Value | Element  |     | Value | Element  |
+| ----- | -------- | --- | ----- | -------- |
+| 0     | None     |     | 5     | Water    |
+| 1     | Physical |     | 6     | Earth    |
+| 2     | Fire     |     | 7     | Wind     |
+| 3     | Ice      |     | 8     | Light    |
+| 4     | Thunder  |     | 9     | Darkness |
 
 **Damage Type**
 
-| Value | Type | | Value | Type |
-|-------|------|-|-------|------|
-| 0 | None | | 4 | MP recover |
-| 1 | HP damage | | 5 | HP drain |
-| 2 | MP damage | | 6 | MP drain |
-| 3 | HP recover | | | |
+| Value | Type       |     | Value | Type       |
+| ----- | ---------- | --- | ----- | ---------- |
+| 0     | None       |     | 4     | MP recover |
+| 1     | HP damage  |     | 5     | HP drain   |
+| 2     | MP damage  |     | 6     | MP drain   |
+| 3     | HP recover |     |       |            |
 
 **Buff/Debuff Type**
 
 | Value | Stat |
-|-------|------|
-| 2 | ATK |
-| 3 | DEF |
-| 4 | MAT |
-| 5 | MDF |
-| 6 | AGI |
-| 7 | LUK |
+| ----- | ---- |
+| 2     | ATK  |
+| 3     | DEF  |
+| 4     | MAT  |
+| 5     | MDF  |
+| 6     | AGI  |
+| 7     | LUK  |
 
 **Effect Code**
 
-| Code | Effect | | Code | Effect |
-|------|--------|-|------|--------|
-| 11 | Recover HP | | 32 | Add debuff |
-| 12 | Recover MP | | 41 | Special effect |
-| 21 | Add state | | 42 | Grow |
-| 22 | Remove state | | 43 | Learn skill |
-| 31 | Add buff | | 44 | Common event |
+| Code | Effect       |     | Code | Effect         |
+| ---- | ------------ | --- | ---- | -------------- |
+| 11   | Recover HP   |     | 32   | Add debuff     |
+| 12   | Recover MP   |     | 41   | Special effect |
+| 21   | Add state    |     | 42   | Grow           |
+| 22   | Remove state |     | 43   | Learn skill    |
+| 31   | Add buff     |     | 44   | Common event   |
 
 **Damage formula examples**
 
@@ -250,6 +254,7 @@ Math.randomInt(100) + 50  // random 50–149
 **Message variables** (`message1` / `message2`): `%1` = subject name, `%2` = skill name.
 
 > **Notes**
+>
 > - Skill IDs 1 and 2 (Attack/Guard) cannot be deleted.
 > - Verify created skills in the RPG Maker MZ editor before shipping.
 > - Use existing animation IDs; balance damage formulas carefully.
@@ -348,7 +353,7 @@ Claude will use the `create_map_event` tool with a basic event structure:
       ],
       "moveFrequency": 3,
       "moveRoute": {
-        "list": [{"code": 0, "parameters": []}],
+        "list": [{ "code": 0, "parameters": [] }],
         "repeat": true,
         "skippable": false,
         "wait": false
@@ -463,6 +468,7 @@ Claude will use the `update_starting_position` tool:
 **User**: "Set all actors to start at level 10"
 
 Claude will:
+
 1. Use `get_actors` to retrieve all actors
 2. Use `update_actor` for each actor to set initialLevel to 10
 
@@ -471,6 +477,7 @@ Claude will:
 **User**: "Create an NPC on map 1 at (12, 8) that gives the player 100 gold when talked to"
 
 Claude will create an event with appropriate commands:
+
 - Show Text: "Here's some gold!"
 - Change Gold: +100
 - Show Text: "Good luck on your journey!"
@@ -486,6 +493,7 @@ Claude will use `set_variable_name` multiple times to name each variable appropr
 **User**: "Increase the price of all items with 'Potion' in their name by 50%"
 
 Claude will:
+
 1. Use `search_items` with "Potion"
 2. For each result, use `update_item` to increase the price
 
@@ -494,6 +502,7 @@ Claude will:
 **User**: "Create a template for save point events that I can reuse"
 
 Claude will provide a complete event structure with:
+
 - Appropriate graphic (e.g., crystal or save point sprite)
 - Event commands for saving
 - Self-switch to prevent repeated triggers if needed
@@ -503,6 +512,7 @@ Claude will provide a complete event structure with:
 **User**: "Tell me how many events are on each map"
 
 Claude will:
+
 1. Use `get_map_infos` to get all maps
 2. For each map, use `get_map_events` and count non-null events
 
@@ -511,6 +521,7 @@ Claude will:
 **User**: "Copy event 3 from map 1 to position (20, 10) on the same map"
 
 Claude will:
+
 1. Use `get_map_event` to retrieve event 3
 2. Use `create_map_event` with the same properties but new position
 
@@ -519,6 +530,7 @@ Claude will:
 **User**: "Change all dialogue in event 5 on map 2 to be more formal"
 
 Claude will:
+
 1. Use `get_map_event` to retrieve the event
 2. Analyze the event commands for Show Text (code 101)
 3. Suggest updated dialogue
@@ -529,12 +541,14 @@ Claude will:
 Here are common event command codes you might use:
 
 ### Message Commands
+
 - `101` - Show Text
 - `102` - Show Choices
 - `103` - Input Number
 - `104` - Select Item
 
 ### Flow Control
+
 - `111` - Conditional Branch
 - `112` - Loop
 - `113` - Break Loop
@@ -542,6 +556,7 @@ Here are common event command codes you might use:
 - `117` - Common Event
 
 ### Party Commands
+
 - `121` - Control Switches
 - `122` - Control Variables
 - `123` - Control Self Switch
@@ -552,6 +567,7 @@ Here are common event command codes you might use:
 - `128` - Change Armor
 
 ### Actor Commands
+
 - `129` - Change Party Member
 - `311` - Change HP
 - `312` - Change MP
@@ -561,6 +577,7 @@ Here are common event command codes you might use:
 - `316` - Change Level
 
 ### Movement Commands
+
 - `201` - Transfer Player
 - `202` - Set Vehicle Location
 - `203` - Set Event Location
@@ -568,6 +585,7 @@ Here are common event command codes you might use:
 - `205` - Set Movement Route
 
 ### Screen Commands
+
 - `221` - Fadeout Screen
 - `222` - Fadein Screen
 - `223` - Tint Screen
@@ -575,11 +593,13 @@ Here are common event command codes you might use:
 - `225` - Shake Screen
 
 ### Audio Commands
+
 - `241` - Play BGM
 - `242` - Fadeout BGM
 - `249` - Play SE
 
 ### Other
+
 - `355` - Script
 - `356` - Plugin Command
 
@@ -607,6 +627,7 @@ You can ask Claude to perform multiple operations in sequence:
 **User**: "Create a new actor named 'Thief', add them to the starting party, and create an event on map 1 that lets the player recruit them"
 
 Claude will:
+
 1. Create the actor
 2. Update the system's party members
 3. Create an appropriate recruitment event

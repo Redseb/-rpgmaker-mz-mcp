@@ -10,6 +10,11 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -22,10 +27,14 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.2"
+    "eslint": "^9.39.4",
+    "prettier": "^3.9.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.63.0"
   }
 }

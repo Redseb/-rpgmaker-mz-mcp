@@ -39,7 +39,7 @@ class RPGMakerMZServer {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     this.projectPath = PROJECT_PATH;
@@ -120,7 +120,7 @@ class RPGMakerMZServer {
       },
       {
         name: 'update_actor',
-        description: 'Update an actor\'s properties',
+        description: "Update an actor's properties",
         inputSchema: {
           type: 'object',
           properties: {
@@ -230,14 +230,26 @@ class RPGMakerMZServer {
             iconIndex: { type: 'number', description: 'Icon index (0-1000+)' },
             mpCost: { type: 'number', description: 'MP cost' },
             tpCost: { type: 'number', description: 'TP cost' },
-            scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all, 7=ally all, etc.)' },
+            scope: {
+              type: 'number',
+              description: 'Target scope (1=enemy single, 2=enemy all, 7=ally all, etc.)',
+            },
             damage: {
               type: 'object',
               description: 'Damage configuration',
               properties: {
-                type: { type: 'number', description: 'Damage type (0=none, 1=HP damage, 3=HP recover, etc.)' },
-                elementId: { type: 'number', description: 'Element ID (0=none, 2=fire, 3=ice, etc.)' },
-                formula: { type: 'string', description: 'Damage formula (e.g., "a.mat * 4 - b.mdf * 2")' },
+                type: {
+                  type: 'number',
+                  description: 'Damage type (0=none, 1=HP damage, 3=HP recover, etc.)',
+                },
+                elementId: {
+                  type: 'number',
+                  description: 'Element ID (0=none, 2=fire, 3=ice, etc.)',
+                },
+                formula: {
+                  type: 'string',
+                  description: 'Damage formula (e.g., "a.mat * 4 - b.mdf * 2")',
+                },
               },
             },
             effects: {
@@ -261,7 +273,10 @@ class RPGMakerMZServer {
             damageFormula: { type: 'string', description: 'Damage formula (e.g., "a.mat * 4")' },
             mpCost: { type: 'number', description: 'MP cost' },
             scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
-            elementId: { type: 'number', description: 'Element ID (0=none, 2=fire, 3=ice, 4=thunder, etc.)' },
+            elementId: {
+              type: 'number',
+              description: 'Element ID (0=none, 2=fire, 3=ice, 4=thunder, etc.)',
+            },
             description: { type: 'string', description: 'Skill description' },
           },
           required: ['name', 'damageFormula', 'mpCost', 'scope'],
@@ -289,7 +304,10 @@ class RPGMakerMZServer {
           type: 'object',
           properties: {
             name: { type: 'string', description: 'Skill name' },
-            buffType: { type: 'number', description: 'Buff type (2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI)' },
+            buffType: {
+              type: 'number',
+              description: 'Buff type (2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI)',
+            },
             turns: { type: 'number', description: 'Number of turns the buff lasts' },
             mpCost: { type: 'number', description: 'MP cost' },
             scope: { type: 'number', description: 'Target scope (7=ally all, 11=user)' },
@@ -305,7 +323,10 @@ class RPGMakerMZServer {
           type: 'object',
           properties: {
             name: { type: 'string', description: 'Skill name' },
-            stateId: { type: 'number', description: 'State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)' },
+            stateId: {
+              type: 'number',
+              description: 'State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)',
+            },
             chance: { type: 'number', description: 'Success chance (0.0-1.0)' },
             mpCost: { type: 'number', description: 'MP cost' },
             scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
@@ -316,7 +337,7 @@ class RPGMakerMZServer {
       },
       {
         name: 'update_skill',
-        description: 'Update a skill\'s properties',
+        description: "Update a skill's properties",
         inputSchema: {
           type: 'object',
           properties: {
@@ -339,7 +360,7 @@ class RPGMakerMZServer {
       },
       {
         name: 'update_item',
-        description: 'Update an item\'s properties',
+        description: "Update an item's properties",
         inputSchema: {
           type: 'object',
           properties: {
@@ -409,7 +430,7 @@ class RPGMakerMZServer {
       },
       {
         name: 'update_map_event',
-        description: 'Update a map event\'s properties',
+        description: "Update a map event's properties",
         inputSchema: {
           type: 'object',
           properties: {
@@ -472,7 +493,8 @@ class RPGMakerMZServer {
       },
       {
         name: 'update_map',
-        description: 'Update a map\'s top-level properties (name, display name, dimensions, bgm, etc.). Does not repaint tiles.',
+        description:
+          "Update a map's top-level properties (name, display name, dimensions, bgm, etc.). Does not repaint tiles.",
         inputSchema: {
           type: 'object',
           properties: {
@@ -495,14 +517,18 @@ class RPGMakerMZServer {
       },
       {
         name: 'set_map_tile',
-        description: 'Set a single raw tile ID at (x, y) on a given z-layer (0-5). Note: tile IDs are raw engine integers; this is a low-level primitive without autotile/passability awareness.',
+        description:
+          'Set a single raw tile ID at (x, y) on a given z-layer (0-5). Note: tile IDs are raw engine integers; this is a low-level primitive without autotile/passability awareness.',
         inputSchema: {
           type: 'object',
           properties: {
             mapId: { type: 'number' },
             x: { type: 'number' },
             y: { type: 'number' },
-            layer: { type: 'number', description: 'Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region)' },
+            layer: {
+              type: 'number',
+              description: 'Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region)',
+            },
             tileId: { type: 'number', description: 'Raw tile ID' },
           },
           required: ['mapId', 'x', 'y', 'layer', 'tileId'],
@@ -659,7 +685,7 @@ class RPGMakerMZServer {
           args.mpCost,
           args.scope,
           args.elementId,
-          args.description
+          args.description,
         );
       case 'create_healing_skill':
         return await skillTools.createHealingSkill(
@@ -668,7 +694,7 @@ class RPGMakerMZServer {
           args.healFormula,
           args.mpCost,
           args.scope,
-          args.description
+          args.description,
         );
       case 'create_buff_skill':
         return await skillTools.createBuffSkill(
@@ -678,7 +704,7 @@ class RPGMakerMZServer {
           args.turns,
           args.mpCost,
           args.scope,
-          args.description
+          args.description,
         );
       case 'create_state_skill':
         return await skillTools.createStateSkill(
@@ -688,7 +714,7 @@ class RPGMakerMZServer {
           args.chance,
           args.mpCost,
           args.scope,
-          args.description
+          args.description,
         );
       case 'update_skill':
         return await skillTools.updateSkill(this.projectPath, args.skillId, args.updates);
@@ -705,7 +731,12 @@ class RPGMakerMZServer {
       case 'get_map_event':
         return await mapTools.getMapEvent(this.projectPath, args.mapId, args.eventId);
       case 'update_map_event':
-        return await mapTools.updateMapEvent(this.projectPath, args.mapId, args.eventId, args.updates);
+        return await mapTools.updateMapEvent(
+          this.projectPath,
+          args.mapId,
+          args.eventId,
+          args.updates,
+        );
       case 'create_map_event':
         return await mapTools.createMapEvent(this.projectPath, args.mapId, args);
       case 'search_map_events':
@@ -717,17 +748,26 @@ class RPGMakerMZServer {
           args.eventId,
           args.pageIndex,
           args.command,
-          args.position
+          args.position,
         );
       case 'update_map':
         return await mapTools.updateMap(this.projectPath, args.mapId, args.updates);
       case 'get_map_dimensions':
         return await mapTools.getMapDimensions(this.projectPath, args.mapId);
       case 'set_map_tile':
-        await mapTools.setMapTile(this.projectPath, args.mapId, args.x, args.y, args.layer, args.tileId);
+        await mapTools.setMapTile(
+          this.projectPath,
+          args.mapId,
+          args.x,
+          args.y,
+          args.layer,
+          args.tileId,
+        );
         return { success: true };
       case 'delete_map_event':
-        return { success: await mapTools.deleteMapEvent(this.projectPath, args.mapId, args.eventId) };
+        return {
+          success: await mapTools.deleteMapEvent(this.projectPath, args.mapId, args.eventId),
+        };
 
       // System Tools
       case 'get_system':

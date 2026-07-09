@@ -14,7 +14,7 @@ export async function getSkills(projectPath: string): Promise<Skill[]> {
  */
 export async function getSkill(projectPath: string, skillId: number): Promise<Skill | null> {
   const skills = await getSkills(projectPath);
-  return skills.find(skill => skill && skill.id === skillId) || null;
+  return skills.find((skill) => skill && skill.id === skillId) || null;
 }
 
 /**
@@ -45,7 +45,7 @@ export async function createSkill(
     animationId?: number;
     message1?: string;
     stypeId?: number;
-  }
+  },
 ): Promise<Skill> {
   const skills = await getSkills(projectPath);
 
@@ -74,7 +74,7 @@ export async function createSkill(
       elementId: skillData.damage?.elementId || 0,
       formula: skillData.damage?.formula || '0',
       variance: skillData.damage?.variance !== undefined ? skillData.damage.variance : 20,
-      critical: skillData.damage?.critical !== undefined ? skillData.damage.critical : false
+      critical: skillData.damage?.critical !== undefined ? skillData.damage.critical : false,
     },
     effects: skillData.effects || [],
     message1: skillData.message1 || '',
@@ -84,7 +84,7 @@ export async function createSkill(
     requiredWtypeId1: 0,
     requiredWtypeId2: 0,
     messageType: 1,
-    traits: []
+    traits: [],
   };
 
   skills.push(newSkill);
@@ -101,10 +101,10 @@ export async function createSkill(
 export async function updateSkill(
   projectPath: string,
   skillId: number,
-  updates: Partial<Skill>
+  updates: Partial<Skill>,
 ): Promise<Skill> {
   const skills = await getSkills(projectPath);
-  const skillIndex = skills.findIndex(skill => skill && skill.id === skillId);
+  const skillIndex = skills.findIndex((skill) => skill && skill.id === skillId);
 
   if (skillIndex === -1) {
     throw new Error(`Skill with ID ${skillId} not found`);
@@ -123,7 +123,7 @@ export async function updateSkill(
  */
 export async function deleteSkill(projectPath: string, skillId: number): Promise<boolean> {
   const skills = await getSkills(projectPath);
-  const skillIndex = skills.findIndex(skill => skill && skill.id === skillId);
+  const skillIndex = skills.findIndex((skill) => skill && skill.id === skillId);
 
   if (skillIndex === -1) {
     return false;
@@ -149,11 +149,11 @@ export async function searchSkills(projectPath: string, searchTerm: string): Pro
   const skills = await getSkills(projectPath);
   const lowerSearchTerm = searchTerm.toLowerCase();
 
-  return skills.filter(skill =>
-    skill && (
-      skill.name.toLowerCase().includes(lowerSearchTerm) ||
-      skill.description.toLowerCase().includes(lowerSearchTerm)
-    )
+  return skills.filter(
+    (skill) =>
+      skill &&
+      (skill.name.toLowerCase().includes(lowerSearchTerm) ||
+        skill.description.toLowerCase().includes(lowerSearchTerm)),
   );
 }
 
@@ -167,7 +167,7 @@ export async function createDamageSkill(
   mpCost: number,
   scope: number,
   elementId?: number,
-  description?: string
+  description?: string,
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
@@ -179,11 +179,11 @@ export async function createDamageSkill(
       elementId: elementId || 0,
       formula: damageFormula,
       variance: 20,
-      critical: true
+      critical: true,
     },
     animationId: 1,
     message1: '%1 casts %2!', // %1 = subject name, %2 = skill name
-    stypeId: 1 // Magic
+    stypeId: 1, // Magic
   });
 }
 
@@ -196,7 +196,7 @@ export async function createHealingSkill(
   healFormula: string,
   mpCost: number,
   scope: number,
-  description?: string
+  description?: string,
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
@@ -208,12 +208,12 @@ export async function createHealingSkill(
       elementId: 0,
       formula: healFormula,
       variance: 20,
-      critical: false
+      critical: false,
     },
     animationId: 47,
     message1: '%1 casts %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
-    iconIndex: 72
+    iconIndex: 72,
   });
 }
 
@@ -227,7 +227,7 @@ export async function createBuffSkill(
   turns: number,
   mpCost: number,
   scope: number,
-  description?: string
+  description?: string,
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
@@ -239,13 +239,13 @@ export async function createBuffSkill(
         code: 31, // Add buff
         dataId: buffType,
         value1: turns,
-        value2: 0
-      }
+        value2: 0,
+      },
     ],
     animationId: 52,
     message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
-    iconIndex: 73
+    iconIndex: 73,
   });
 }
 
@@ -259,7 +259,7 @@ export async function createDebuffSkill(
   turns: number,
   mpCost: number,
   scope: number,
-  description?: string
+  description?: string,
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
@@ -271,13 +271,13 @@ export async function createDebuffSkill(
         code: 32, // Add debuff
         dataId: debuffType,
         value1: turns,
-        value2: 0
-      }
+        value2: 0,
+      },
     ],
     animationId: 40,
     message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
-    iconIndex: 74
+    iconIndex: 74,
   });
 }
 
@@ -291,7 +291,7 @@ export async function createStateSkill(
   chance: number,
   mpCost: number,
   scope: number,
-  description?: string
+  description?: string,
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
@@ -303,18 +303,18 @@ export async function createStateSkill(
         code: 21, // Add state
         dataId: stateId,
         value1: chance,
-        value2: 0
-      }
+        value2: 0,
+      },
     ],
     damage: {
       type: 0,
       elementId: 0,
       formula: '0',
       variance: 20,
-      critical: false
+      critical: false,
     },
     animationId: 1,
     message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
-    stypeId: 1
+    stypeId: 1,
   });
 }

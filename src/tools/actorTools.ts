@@ -14,7 +14,7 @@ export async function getActors(projectPath: string): Promise<Actor[]> {
  */
 export async function getActor(projectPath: string, actorId: number): Promise<Actor | null> {
   const actors = await getActors(projectPath);
-  return actors.find(actor => actor && actor.id === actorId) || null;
+  return actors.find((actor) => actor && actor.id === actorId) || null;
 }
 
 /**
@@ -23,10 +23,10 @@ export async function getActor(projectPath: string, actorId: number): Promise<Ac
 export async function updateActor(
   projectPath: string,
   actorId: number,
-  updates: Partial<Actor>
+  updates: Partial<Actor>,
 ): Promise<Actor> {
   const actors = await getActors(projectPath);
-  const actorIndex = actors.findIndex(actor => actor && actor.id === actorId);
+  const actorIndex = actors.findIndex((actor) => actor && actor.id === actorId);
 
   if (actorIndex === -1) {
     throw new Error(`Actor with ID ${actorId} not found`);
@@ -45,7 +45,7 @@ export async function updateActor(
  */
 export async function createActor(
   projectPath: string,
-  actorData: Omit<Actor, 'id'>
+  actorData: Omit<Actor, 'id'>,
 ): Promise<Actor> {
   const actors = await getActors(projectPath);
 
@@ -56,7 +56,7 @@ export async function createActor(
 
   const newActor: Actor = {
     id: maxId + 1,
-    ...actorData
+    ...actorData,
   };
 
   actors.push(newActor);
@@ -72,7 +72,7 @@ export async function createActor(
  */
 export async function deleteActor(projectPath: string, actorId: number): Promise<boolean> {
   const actors = await getActors(projectPath);
-  const actorIndex = actors.findIndex(actor => actor && actor.id === actorId);
+  const actorIndex = actors.findIndex((actor) => actor && actor.id === actorId);
 
   if (actorIndex === -1) {
     return false;
@@ -93,10 +93,10 @@ export async function searchActors(projectPath: string, searchTerm: string): Pro
   const actors = await getActors(projectPath);
   const lowerSearchTerm = searchTerm.toLowerCase();
 
-  return actors.filter(actor =>
-    actor && (
-      actor.name.toLowerCase().includes(lowerSearchTerm) ||
-      actor.nickname.toLowerCase().includes(lowerSearchTerm)
-    )
+  return actors.filter(
+    (actor) =>
+      actor &&
+      (actor.name.toLowerCase().includes(lowerSearchTerm) ||
+        actor.nickname.toLowerCase().includes(lowerSearchTerm)),
   );
 }

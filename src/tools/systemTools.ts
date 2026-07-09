@@ -14,7 +14,7 @@ export async function getSystem(projectPath: string): Promise<SystemData> {
  */
 export async function updateSystem(
   projectPath: string,
-  updates: Partial<SystemData>
+  updates: Partial<SystemData>,
 ): Promise<SystemData> {
   const system = await getSystem(projectPath);
   const updatedSystem = { ...system, ...updates };
@@ -39,7 +39,7 @@ export async function getVariables(projectPath: string): Promise<string[]> {
 export async function setVariableName(
   projectPath: string,
   variableId: number,
-  name: string
+  name: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.variables[variableId] = name;
@@ -62,7 +62,7 @@ export async function getSwitches(projectPath: string): Promise<string[]> {
 export async function setSwitchName(
   projectPath: string,
   switchId: number,
-  name: string
+  name: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.switches[switchId] = name;
@@ -84,7 +84,7 @@ export async function getPartyMembers(projectPath: string): Promise<number[]> {
  */
 export async function updatePartyMembers(
   projectPath: string,
-  partyMembers: number[]
+  partyMembers: number[],
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.partyMembers = partyMembers;
@@ -97,13 +97,13 @@ export async function updatePartyMembers(
  * Get starting position
  */
 export async function getStartingPosition(
-  projectPath: string
+  projectPath: string,
 ): Promise<{ mapId: number; x: number; y: number }> {
   const system = await getSystem(projectPath);
   return {
     mapId: system.startMapId,
     x: system.startX,
-    y: system.startY
+    y: system.startY,
   };
 }
 
@@ -114,7 +114,7 @@ export async function updateStartingPosition(
   projectPath: string,
   mapId: number,
   x: number,
-  y: number
+  y: number,
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.startMapId = mapId;
@@ -158,7 +158,7 @@ export async function getTerms(projectPath: string): Promise<any> {
 export async function updateBasicTerm(
   projectPath: string,
   index: number,
-  value: string
+  value: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.terms.basic[index] = value;
@@ -173,7 +173,7 @@ export async function updateBasicTerm(
 export async function updateCommandTerm(
   projectPath: string,
   index: number,
-  value: string
+  value: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
   system.terms.commands[index] = value;
