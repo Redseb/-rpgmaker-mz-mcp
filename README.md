@@ -111,6 +111,10 @@ Add to your Claude Desktop configuration file:
 - `create_map_event` - Create a new event on a map
 - `search_map_events` - Search events on a map by name
 - `add_event_command` - Add a command to an event page
+- `update_map` - Update a map's top-level properties
+- `get_map_dimensions` - Get a map's width and height in tiles
+- `set_map_tile` - Set a single raw tile ID at (x, y) on a z-layer
+- `delete_map_event` - Delete an event from a map by ID
 
 ### System Tools
 

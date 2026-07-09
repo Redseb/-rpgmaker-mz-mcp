@@ -14,11 +14,17 @@ export async function readJsonFile<T>(filePath: string): Promise<T> {
 }
 
 /**
- * Write JSON data to a file with proper formatting
+ * Write JSON data to a file.
+ *
+ * RPG Maker MZ's editor saves its `data/*.json` files as compact, single-line
+ * JSON (no indentation). We match that format so that:
+ *  - map tile arrays don't explode into thousands of lines, and
+ *  - diffs stay minimal and consistent with what the editor itself writes,
+ *    which keeps the per-session git-checkpoint workflow readable.
  */
 export async function writeJsonFile(filePath: string, data: any): Promise<void> {
   try {
-    const jsonString = JSON.stringify(data, null, 2);
+    const jsonString = JSON.stringify(data);
     await writeFile(filePath, jsonString, 'utf-8');
   } catch (error) {
     throw new Error(`Failed to write JSON file ${filePath}: ${error}`);

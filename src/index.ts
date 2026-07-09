@@ -470,6 +470,56 @@ class RPGMakerMZServer {
           required: ['mapId', 'eventId', 'pageIndex', 'command'],
         },
       },
+      {
+        name: 'update_map',
+        description: 'Update a map\'s top-level properties (name, display name, dimensions, bgm, etc.). Does not repaint tiles.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            mapId: { type: 'number' },
+            updates: { type: 'object', description: 'Partial MapData properties to merge' },
+          },
+          required: ['mapId', 'updates'],
+        },
+      },
+      {
+        name: 'get_map_dimensions',
+        description: 'Get the width and height (in tiles) of a map',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            mapId: { type: 'number' },
+          },
+          required: ['mapId'],
+        },
+      },
+      {
+        name: 'set_map_tile',
+        description: 'Set a single raw tile ID at (x, y) on a given z-layer (0-5). Note: tile IDs are raw engine integers; this is a low-level primitive without autotile/passability awareness.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            mapId: { type: 'number' },
+            x: { type: 'number' },
+            y: { type: 'number' },
+            layer: { type: 'number', description: 'Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region)' },
+            tileId: { type: 'number', description: 'Raw tile ID' },
+          },
+          required: ['mapId', 'x', 'y', 'layer', 'tileId'],
+        },
+      },
+      {
+        name: 'delete_map_event',
+        description: 'Delete an event from a map by ID',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            mapId: { type: 'number' },
+            eventId: { type: 'number' },
+          },
+          required: ['mapId', 'eventId'],
+        },
+      },
 
       // System Tools
       {
@@ -669,6 +719,15 @@ class RPGMakerMZServer {
           args.command,
           args.position
         );
+      case 'update_map':
+        return await mapTools.updateMap(this.projectPath, args.mapId, args.updates);
+      case 'get_map_dimensions':
+        return await mapTools.getMapDimensions(this.projectPath, args.mapId);
+      case 'set_map_tile':
+        await mapTools.setMapTile(this.projectPath, args.mapId, args.x, args.y, args.layer, args.tileId);
+        return { success: true };
+      case 'delete_map_event':
+        return { success: await mapTools.deleteMapEvent(this.projectPath, args.mapId, args.eventId) };
 
       // System Tools
       case 'get_system':

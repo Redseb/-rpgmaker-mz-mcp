@@ -6,9 +6,10 @@ This document provides detailed examples of how to use the RPG Maker MZ MCP Serv
 
 1. [Actor Management](#actor-management)
 2. [Item and Equipment Management](#item-and-equipment-management)
-3. [Map and Event Management](#map-and-event-management)
-4. [System Configuration](#system-configuration)
-5. [Advanced Use Cases](#advanced-use-cases)
+3. [Skill Creation](#skill-creation)
+4. [Map and Event Management](#map-and-event-management)
+5. [System Configuration](#system-configuration)
+6. [Advanced Use Cases](#advanced-use-cases)
 
 ## Actor Management
 
@@ -116,6 +117,142 @@ Claude will help you modify the item's effects array appropriately.
 **User**: "Find all items related to healing"
 
 Claude will use the `search_items` tool with "heal" as the search term.
+
+## Skill Creation
+
+The server exposes both a full-control `create_skill` tool and simplified helpers
+for the most common skill archetypes. In most cases you can just describe the
+skill in natural language and Claude will pick the right tool.
+
+### Example 1: Damage Skill
+
+**User**: "Create a fire-element attack magic called 'Fireball'. MP 15, single enemy, damage `a.mat * 4 - b.mdf * 2`."
+
+Claude uses `create_damage_skill`:
+- `name` — skill name
+- `damageFormula` — damage formula
+- `mpCost` — MP cost
+- `scope` — target (1 = single enemy, 2 = all enemies)
+- `elementId` — element (see table below)
+- `description` — optional description
+
+### Example 2: Healing Skill
+
+**User**: "Create a party-wide heal called 'Group Heal'. MP 20, restores `a.mat * 3 + 50` HP to all allies."
+
+Claude uses `create_healing_skill` (`scope` 7 = all allies, 11 = user).
+
+### Example 3: Buff Skill
+
+**User**: "Create 'Attack Up' — MP 12, raises all allies' attack for 3 turns."
+
+Claude uses `create_buff_skill`:
+- `buffType` — 2 = ATK, 3 = DEF, 4 = MAT, 5 = MDF, 6 = AGI
+- `turns` — duration in turns
+
+### Example 4: Status Ailment Skill
+
+**User**: "Create 'Poison Mist' — MP 10, 80% chance to poison all enemies."
+
+Claude uses `create_state_skill`:
+- `stateId` — 4 = poison, 5 = blind, 6 = silence, 8 = confusion, 10 = sleep, 12 = paralysis
+- `chance` — success chance (0.0–1.0)
+
+### Example 5: Complex / Custom Skill
+
+For anything the helpers don't cover, use `create_skill` directly:
+
+```json
+{
+  "name": "Flame Burst",
+  "description": "Hits all enemies and may burn them.",
+  "iconIndex": 64,
+  "mpCost": 40,
+  "scope": 2,
+  "damage": { "type": 1, "elementId": 2, "formula": "a.mat * 4", "variance": 20, "critical": true },
+  "effects": [
+    { "code": 31, "dataId": 2, "value1": 3, "value2": 0 },
+    { "code": 21, "dataId": 4, "value1": 0.3, "value2": 0 }
+  ],
+  "animationId": 52,
+  "message1": "%1 casts %2!",
+  "stypeId": 1
+}
+```
+
+### Reference Tables
+
+**Scope (target)**
+
+| Value | Meaning |
+|-------|---------|
+| 0 | None |
+| 1 | One enemy |
+| 2 | All enemies |
+| 3–6 | Random enemy (1–4 targets) |
+| 7 | All allies |
+| 8 | All allies (incl. dead) |
+| 9 | One ally (dead) |
+| 10 | One ally |
+| 11 | The user |
+
+**Element ID**
+
+| Value | Element | | Value | Element |
+|-------|---------|-|-------|---------|
+| 0 | None | | 5 | Water |
+| 1 | Physical | | 6 | Earth |
+| 2 | Fire | | 7 | Wind |
+| 3 | Ice | | 8 | Light |
+| 4 | Thunder | | 9 | Darkness |
+
+**Damage Type**
+
+| Value | Type | | Value | Type |
+|-------|------|-|-------|------|
+| 0 | None | | 4 | MP recover |
+| 1 | HP damage | | 5 | HP drain |
+| 2 | MP damage | | 6 | MP drain |
+| 3 | HP recover | | | |
+
+**Buff/Debuff Type**
+
+| Value | Stat |
+|-------|------|
+| 2 | ATK |
+| 3 | DEF |
+| 4 | MAT |
+| 5 | MDF |
+| 6 | AGI |
+| 7 | LUK |
+
+**Effect Code**
+
+| Code | Effect | | Code | Effect |
+|------|--------|-|------|--------|
+| 11 | Recover HP | | 32 | Add debuff |
+| 12 | Recover MP | | 41 | Special effect |
+| 21 | Add state | | 42 | Grow |
+| 22 | Remove state | | 43 | Learn skill |
+| 31 | Add buff | | 44 | Common event |
+
+**Damage formula examples**
+
+```
+a.mat * 4 - b.mdf * 2     // standard magic attack
+a.atk * 4 - b.def * 2     // standard physical attack
+a.mat * 3 + 100           // magic scaling + flat amount
+a.mhp * 0.5               // 50% of max HP
+b.hp * 0.5                // 50% of target's current HP
+Math.randomInt(100) + 50  // random 50–149
+```
+
+**Message variables** (`message1` / `message2`): `%1` = subject name, `%2` = skill name.
+
+> **Notes**
+> - Skill IDs 1 and 2 (Attack/Guard) cannot be deleted.
+> - Verify created skills in the RPG Maker MZ editor before shipping.
+> - Use existing animation IDs; balance damage formulas carefully.
 
 ## Map and Event Management
 

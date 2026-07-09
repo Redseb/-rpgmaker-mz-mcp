@@ -171,7 +171,7 @@ export async function createDamageSkill(
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
-    description: description || `${name}を使用する`,
+    description: description || `Deals damage with ${name}.`,
     mpCost,
     scope,
     damage: {
@@ -182,7 +182,7 @@ export async function createDamageSkill(
       critical: true
     },
     animationId: 1,
-    message1: `%1は${name}を放った！`,
+    message1: '%1 casts %2!', // %1 = subject name, %2 = skill name
     stypeId: 1 // Magic
   });
 }
@@ -200,7 +200,7 @@ export async function createHealingSkill(
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
-    description: description || `${name}でHPを回復する`,
+    description: description || `Restores HP with ${name}.`,
     mpCost,
     scope,
     damage: {
@@ -211,7 +211,7 @@ export async function createHealingSkill(
       critical: false
     },
     animationId: 47,
-    message1: `%1は${name}を唱えた！`,
+    message1: '%1 casts %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
     iconIndex: 72
   });
@@ -231,7 +231,7 @@ export async function createBuffSkill(
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
-    description: description || `${name}で能力を強化する`,
+    description: description || `Strengthens allies with ${name}.`,
     mpCost,
     scope,
     effects: [
@@ -243,7 +243,7 @@ export async function createBuffSkill(
       }
     ],
     animationId: 52,
-    message1: `%1は${name}を使った！`,
+    message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
     iconIndex: 73
   });
@@ -263,7 +263,7 @@ export async function createDebuffSkill(
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
-    description: description || `${name}で敵を弱体化する`,
+    description: description || `Weakens enemies with ${name}.`,
     mpCost,
     scope,
     effects: [
@@ -275,7 +275,7 @@ export async function createDebuffSkill(
       }
     ],
     animationId: 40,
-    message1: `%1は${name}を放った！`,
+    message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
     stypeId: 1,
     iconIndex: 74
   });
@@ -295,7 +295,7 @@ export async function createStateSkill(
 ): Promise<Skill> {
   return await createSkill(projectPath, {
     name,
-    description: description || `${name}で状態異常を付与する`,
+    description: description || `Inflicts a status ailment with ${name}.`,
     mpCost,
     scope,
     effects: [
@@ -314,7 +314,7 @@ export async function createStateSkill(
       critical: false
     },
     animationId: 1,
-    message1: `%1は${name}を使った！`,
+    message1: '%1 uses %2!', // %1 = subject name, %2 = skill name
     stypeId: 1
   });
 }

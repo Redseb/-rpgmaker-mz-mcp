@@ -68,7 +68,7 @@ You need to add the MCP server to Claude Desktop's configuration file.
     "rpgmaker-mz": {
       "command": "node",
       "args": [
-        "C:/Users/PC_User/OneDrive/ドキュメント/claude/rpgmaker-mz-mcp/dist/index.js"
+        "/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"
       ],
       "env": {
         "RPGMAKER_PROJECT_PATH": "C:/path/to/your/rpgmaker/project"
@@ -228,7 +228,7 @@ Then your config becomes:
     "rpgmaker-mz": {
       "command": "node",
       "args": [
-        "C:/Users/PC_User/OneDrive/ドキュメント/claude/rpgmaker-mz-mcp/dist/index.js"
+        "/absolute/path/to/rpgmaker-mz-mcp/dist/index.js"
       ]
     }
   }

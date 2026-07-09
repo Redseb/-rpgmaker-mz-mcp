@@ -39,3 +39,6 @@ logs/
 # OS
 Thumbs.db
 .DS_Store
+
+# Local Claude notes
+CLAUDE.local.md
