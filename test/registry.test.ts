@@ -34,7 +34,7 @@ describe('toTool', () => {
 
 describe('tool registry contract', () => {
   it('exposes the expected number of tools', () => {
-    expect(allToolDefinitions.length).toBe(39);
+    expect(allToolDefinitions.length).toBe(40);
   });
 
   it('has unique tool names', () => {

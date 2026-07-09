@@ -127,6 +127,10 @@ Add to your Claude Desktop configuration file:
 - `update_game_title` - Update the game title
 - `update_starting_position` - Update the game starting position
 
+### Index Tools
+
+- `list_names` - Cheap names-only `{ id, name }` index for a table (actors, items, weapons, armors, skills, or maps) — for looking up IDs without a full record dump
+
 ## Example Usage
 
 Once configured, you can use Claude to interact with your RPG Maker MZ project:
