@@ -1,0 +1,24 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "rpgmaker",
+    "modelcontextprotocol",
+    "RPGMZ",
+    "rmmzproject",
+    "MapInfos",
+    "autotile",
+    "autotiles",
+    "tileset",
+    "tilesets",
+    "stypeId",
+    "dataId",
+    "battler",
+    "mkdtemp",
+    "tmpdir",
+    "Vitest",
+    "esbuild",
+    "tseslint"
+  ],
+  "ignorePaths": ["node_modules", "dist", "package-lock.json", "coverage"]
+}
