@@ -1,5 +1,6 @@
 import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { Actor } from '../utils/types.js';
+import { ToolDefinition } from '../registry.js';
 
 /**
  * Get all actors from the project
@@ -54,9 +55,10 @@ export async function createActor(
     return actor && actor.id > max ? actor.id : max;
   }, 0);
 
+  // Spread first so the computed id always wins, even if a caller passes one.
   const newActor: Actor = {
-    id: maxId + 1,
     ...actorData,
+    id: maxId + 1,
   };
 
   actors.push(newActor);
@@ -100,3 +102,70 @@ export async function searchActors(projectPath: string, searchTerm: string): Pro
         actor.nickname.toLowerCase().includes(lowerSearchTerm)),
   );
 }
+
+export const actorToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'get_actors',
+    description: 'Get all actors from the RPG Maker MZ project',
+    inputSchema: { type: 'object', properties: {} },
+    handler: (ctx) => getActors(ctx.projectPath),
+  },
+  {
+    name: 'get_actor',
+    description: 'Get a specific actor by ID',
+    inputSchema: {
+      type: 'object',
+      properties: { actorId: { type: 'number', description: 'The ID of the actor to retrieve' } },
+      required: ['actorId'],
+    },
+    handler: (ctx, args) => getActor(ctx.projectPath, args.actorId),
+  },
+  {
+    name: 'update_actor',
+    description: "Update an actor's properties",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        actorId: { type: 'number', description: 'The ID of the actor to update' },
+        updates: { type: 'object', description: 'Object containing properties to update' },
+      },
+      required: ['actorId', 'updates'],
+    },
+    handler: (ctx, args) => updateActor(ctx.projectPath, args.actorId, args.updates),
+  },
+  {
+    name: 'create_actor',
+    description: 'Create a new actor',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        nickname: { type: 'string' },
+        profile: { type: 'string' },
+        classId: { type: 'number' },
+        initialLevel: { type: 'number' },
+        maxLevel: { type: 'number' },
+        characterName: { type: 'string' },
+        characterIndex: { type: 'number' },
+        faceName: { type: 'string' },
+        faceIndex: { type: 'number' },
+        battlerName: { type: 'string' },
+        traits: { type: 'array' },
+        equips: { type: 'array' },
+        note: { type: 'string' },
+      },
+      required: ['name'],
+    },
+    handler: (ctx, args) => createActor(ctx.projectPath, args as Omit<Actor, 'id'>),
+  },
+  {
+    name: 'search_actors',
+    description: 'Search actors by name or nickname',
+    inputSchema: {
+      type: 'object',
+      properties: { searchTerm: { type: 'string', description: 'The search term to find actors' } },
+      required: ['searchTerm'],
+    },
+    handler: (ctx, args) => searchActors(ctx.projectPath, args.searchTerm),
+  },
+];

@@ -1,5 +1,6 @@
 import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { Item, Weapon, Armor, Skill } from '../utils/types.js';
+import { ToolDefinition } from '../registry.js';
 
 /**
  * Get all items from the project
@@ -74,9 +75,10 @@ export async function createItem(projectPath: string, itemData: Omit<Item, 'id'>
     return item && item.id > max ? item.id : max;
   }, 0);
 
+  // Spread first so the computed id always wins, even if a caller passes one.
   const newItem: Item = {
-    id: maxId + 1,
     ...itemData,
+    id: maxId + 1,
   };
 
   items.push(newItem);
@@ -170,3 +172,53 @@ export async function searchItems(projectPath: string, searchTerm: string): Prom
         item.description.toLowerCase().includes(lowerSearchTerm)),
   );
 }
+
+export const itemToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'get_items',
+    description: 'Get all items from the project',
+    inputSchema: { type: 'object', properties: {} },
+    handler: (ctx) => getItems(ctx.projectPath),
+  },
+  {
+    name: 'get_weapons',
+    description: 'Get all weapons from the project',
+    inputSchema: { type: 'object', properties: {} },
+    handler: (ctx) => getWeapons(ctx.projectPath),
+  },
+  {
+    name: 'get_armors',
+    description: 'Get all armors from the project',
+    inputSchema: { type: 'object', properties: {} },
+    handler: (ctx) => getArmors(ctx.projectPath),
+  },
+  {
+    name: 'get_skills',
+    description: 'Get all skills from the project',
+    inputSchema: { type: 'object', properties: {} },
+    handler: (ctx) => getSkills(ctx.projectPath),
+  },
+  {
+    name: 'update_item',
+    description: "Update an item's properties",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        itemId: { type: 'number' },
+        updates: { type: 'object' },
+      },
+      required: ['itemId', 'updates'],
+    },
+    handler: (ctx, args) => updateItem(ctx.projectPath, args.itemId, args.updates),
+  },
+  {
+    name: 'search_items',
+    description: 'Search items by name or description',
+    inputSchema: {
+      type: 'object',
+      properties: { searchTerm: { type: 'string' } },
+      required: ['searchTerm'],
+    },
+    handler: (ctx, args) => searchItems(ctx.projectPath, args.searchTerm),
+  },
+];

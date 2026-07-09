@@ -15,6 +15,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "npm run build"
   },
   "keywords": [
@@ -35,6 +37,7 @@
     "eslint": "^9.39.4",
     "prettier": "^3.9.5",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.63.0"
+    "typescript-eslint": "^8.63.0",
+    "vitest": "^3.2.7"
   }
 }

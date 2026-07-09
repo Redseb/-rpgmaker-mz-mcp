@@ -1,5 +1,6 @@
 import { readJsonFile, writeJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { Skill } from '../utils/types.js';
+import { ToolDefinition } from '../registry.js';
 
 /**
  * Get all skills from the project
@@ -318,3 +319,192 @@ export async function createStateSkill(
     stypeId: 1,
   });
 }
+
+export const skillToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'get_skill',
+    description: 'Get a specific skill by ID',
+    inputSchema: {
+      type: 'object',
+      properties: { skillId: { type: 'number', description: 'The ID of the skill to retrieve' } },
+      required: ['skillId'],
+    },
+    handler: (ctx, args) => getSkill(ctx.projectPath, args.skillId),
+  },
+  {
+    name: 'create_skill',
+    description: 'Create a new skill with custom properties',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Skill name' },
+        description: { type: 'string', description: 'Skill description' },
+        iconIndex: { type: 'number', description: 'Icon index (0-1000+)' },
+        mpCost: { type: 'number', description: 'MP cost' },
+        tpCost: { type: 'number', description: 'TP cost' },
+        scope: {
+          type: 'number',
+          description: 'Target scope (1=enemy single, 2=enemy all, 7=ally all, etc.)',
+        },
+        damage: {
+          type: 'object',
+          description: 'Damage configuration',
+          properties: {
+            type: {
+              type: 'number',
+              description: 'Damage type (0=none, 1=HP damage, 3=HP recover, etc.)',
+            },
+            elementId: {
+              type: 'number',
+              description: 'Element ID (0=none, 2=fire, 3=ice, etc.)',
+            },
+            formula: {
+              type: 'string',
+              description: 'Damage formula (e.g., "a.mat * 4 - b.mdf * 2")',
+            },
+          },
+        },
+        effects: {
+          type: 'array',
+          description: 'Skill effects (buffs, debuffs, states, etc.)',
+        },
+        animationId: { type: 'number', description: 'Animation ID' },
+        message1: { type: 'string', description: 'Battle message' },
+        stypeId: { type: 'number', description: 'Skill type (1=magic, 2=special, etc.)' },
+      },
+      required: ['name'],
+    },
+    handler: (ctx, args) => createSkill(ctx.projectPath, args as Parameters<typeof createSkill>[1]),
+  },
+  {
+    name: 'create_damage_skill',
+    description: 'Create a damage-dealing skill (simplified)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Skill name' },
+        damageFormula: { type: 'string', description: 'Damage formula (e.g., "a.mat * 4")' },
+        mpCost: { type: 'number', description: 'MP cost' },
+        scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
+        elementId: {
+          type: 'number',
+          description: 'Element ID (0=none, 2=fire, 3=ice, 4=thunder, etc.)',
+        },
+        description: { type: 'string', description: 'Skill description' },
+      },
+      required: ['name', 'damageFormula', 'mpCost', 'scope'],
+    },
+    handler: (ctx, args) =>
+      createDamageSkill(
+        ctx.projectPath,
+        args.name,
+        args.damageFormula,
+        args.mpCost,
+        args.scope,
+        args.elementId,
+        args.description,
+      ),
+  },
+  {
+    name: 'create_healing_skill',
+    description: 'Create a healing skill (simplified)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Skill name' },
+        healFormula: { type: 'string', description: 'Heal formula (e.g., "a.mat * 3 + 100")' },
+        mpCost: { type: 'number', description: 'MP cost' },
+        scope: { type: 'number', description: 'Target scope (7=ally all, 11=user)' },
+        description: { type: 'string', description: 'Skill description' },
+      },
+      required: ['name', 'healFormula', 'mpCost', 'scope'],
+    },
+    handler: (ctx, args) =>
+      createHealingSkill(
+        ctx.projectPath,
+        args.name,
+        args.healFormula,
+        args.mpCost,
+        args.scope,
+        args.description,
+      ),
+  },
+  {
+    name: 'create_buff_skill',
+    description: 'Create a buff skill (simplified)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Skill name' },
+        buffType: { type: 'number', description: 'Buff type (2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI)' },
+        turns: { type: 'number', description: 'Number of turns the buff lasts' },
+        mpCost: { type: 'number', description: 'MP cost' },
+        scope: { type: 'number', description: 'Target scope (7=ally all, 11=user)' },
+        description: { type: 'string', description: 'Skill description' },
+      },
+      required: ['name', 'buffType', 'turns', 'mpCost', 'scope'],
+    },
+    handler: (ctx, args) =>
+      createBuffSkill(
+        ctx.projectPath,
+        args.name,
+        args.buffType,
+        args.turns,
+        args.mpCost,
+        args.scope,
+        args.description,
+      ),
+  },
+  {
+    name: 'create_state_skill',
+    description: 'Create a state-inflicting skill (poison, sleep, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Skill name' },
+        stateId: {
+          type: 'number',
+          description: 'State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)',
+        },
+        chance: { type: 'number', description: 'Success chance (0.0-1.0)' },
+        mpCost: { type: 'number', description: 'MP cost' },
+        scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
+        description: { type: 'string', description: 'Skill description' },
+      },
+      required: ['name', 'stateId', 'chance', 'mpCost', 'scope'],
+    },
+    handler: (ctx, args) =>
+      createStateSkill(
+        ctx.projectPath,
+        args.name,
+        args.stateId,
+        args.chance,
+        args.mpCost,
+        args.scope,
+        args.description,
+      ),
+  },
+  {
+    name: 'update_skill',
+    description: "Update a skill's properties",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        skillId: { type: 'number', description: 'The skill ID to update' },
+        updates: { type: 'object', description: 'Properties to update' },
+      },
+      required: ['skillId', 'updates'],
+    },
+    handler: (ctx, args) => updateSkill(ctx.projectPath, args.skillId, args.updates),
+  },
+  {
+    name: 'search_skills',
+    description: 'Search skills by name or description',
+    inputSchema: {
+      type: 'object',
+      properties: { searchTerm: { type: 'string', description: 'Search term' } },
+      required: ['searchTerm'],
+    },
+    handler: (ctx, args) => searchSkills(ctx.projectPath, args.searchTerm),
+  },
+];
