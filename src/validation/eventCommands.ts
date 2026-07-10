@@ -121,6 +121,7 @@ export const KNOWN_COMMANDS: Record<number, CommandSpec> = {
   404: { name: 'End Choices' },
   405: { name: 'Scrolling Text line', check: expectLength(1) },
   408: { name: 'Comment line', check: expectAtLeast(1) },
+  505: { name: 'Move Route step', check: expectLength(1) },
   411: { name: 'Else' },
   412: { name: 'End Conditional Branch' },
   413: { name: 'Repeat Above' },
