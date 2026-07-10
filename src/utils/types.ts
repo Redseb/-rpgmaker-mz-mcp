@@ -101,6 +101,34 @@ export interface Enemy {
   note: string;
 }
 
+/**
+ * A character class (`data/Classes.json`): the param growth curves, learnable
+ * skills, and traits that back an actor. The file is a 1-indexed array (slot 0
+ * null, index === id).
+ */
+export interface GameClass {
+  id: number;
+  name: string;
+  /** EXP curve settings: [basis, extra, accelerationA, accelerationB]. */
+  expParams: number[];
+  /**
+   * Parameter growth: 8 rows (`[maxHP, maxMP, atk, def, mat, mdf, agi, luk]`),
+   * each a `maxLevel + 1`-length curve indexed by level (index 0 is an unused
+   * level-0 placeholder; the engine only reads level ≥ 1).
+   */
+  params: number[][];
+  learnings: Learning[];
+  traits: Trait[];
+  note: string;
+}
+
+/** One "learn skill at level" entry in a class's `learnings` list. */
+export interface Learning {
+  level: number;
+  skillId: number;
+  note: string;
+}
+
 export interface Trait {
   code: number;
   dataId: number;

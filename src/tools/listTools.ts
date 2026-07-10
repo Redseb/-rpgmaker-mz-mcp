@@ -9,6 +9,7 @@ import { ToolDefinition } from '../registry.js';
  */
 export const LISTABLE_FILES = {
   actors: 'Actors.json',
+  classes: 'Classes.json',
   items: 'Items.json',
   weapons: 'Weapons.json',
   armors: 'Armors.json',
@@ -61,7 +62,7 @@ export const listToolDefinitions: ToolDefinition[] = [
       type: z
         .enum(Object.keys(LISTABLE_FILES) as [ListableType, ...ListableType[]])
         .describe(
-          'Which table to index: actors, items, weapons, armors, skills, enemies, troops, or maps.',
+          'Which table to index: actors, classes, items, weapons, armors, skills, enemies, troops, or maps.',
         ),
     },
     handler: (ctx, args) => listNames(ctx.projectPath, args.type),

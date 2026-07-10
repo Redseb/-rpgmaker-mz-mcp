@@ -4,6 +4,7 @@ import { itemToolDefinitions } from './itemTools.js';
 import { skillToolDefinitions } from './skillTools.js';
 import { mapToolDefinitions } from './mapTools.js';
 import { battleToolDefinitions } from './battleTools.js';
+import { classToolDefinitions } from './classTools.js';
 import { systemToolDefinitions } from './systemTools.js';
 import { listToolDefinitions } from './listTools.js';
 import { validationToolDefinitions } from './validationTools.js';
@@ -19,6 +20,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...skillToolDefinitions,
   ...mapToolDefinitions,
   ...battleToolDefinitions,
+  ...classToolDefinitions,
   ...systemToolDefinitions,
   ...listToolDefinitions,
   ...validationToolDefinitions,
