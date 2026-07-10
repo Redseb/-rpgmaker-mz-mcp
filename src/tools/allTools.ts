@@ -11,6 +11,7 @@ import { pluginToolDefinitions } from './pluginTools.js';
 import { tileToolDefinitions } from './tileTools.js';
 import { catalogToolDefinitions } from './catalogTools.js';
 import { paintToolDefinitions } from './paintTools.js';
+import { tilesetToolDefinitions } from './tilesetTools.js';
 import { systemToolDefinitions } from './systemTools.js';
 import { listToolDefinitions } from './listTools.js';
 import { validationToolDefinitions } from './validationTools.js';
@@ -33,6 +34,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...tileToolDefinitions,
   ...catalogToolDefinitions,
   ...paintToolDefinitions,
+  ...tilesetToolDefinitions,
   ...systemToolDefinitions,
   ...listToolDefinitions,
   ...validationToolDefinitions,
