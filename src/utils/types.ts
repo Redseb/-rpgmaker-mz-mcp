@@ -129,6 +129,23 @@ export interface Learning {
   note: string;
 }
 
+/**
+ * A common event (`data/CommonEvents.json`): a named, reusable event-command
+ * `list` that any map/battle event can invoke (command code 117) or that the
+ * engine runs on its own via `trigger`. The file is a 1-indexed array (slot 0
+ * null, index === id).
+ */
+export interface CommonEvent {
+  id: number;
+  name: string;
+  /** The command list, same `EventCommand` format map events use; ends with code 0. */
+  list: EventCommand[];
+  /** Switch that gates an Autorun/Parallel common event (ignored when trigger is 0). */
+  switchId: number;
+  /** When it runs on its own: 0 None (call-only), 1 Autorun, 2 Parallel. */
+  trigger: number;
+}
+
 export interface Trait {
   code: number;
   dataId: number;
