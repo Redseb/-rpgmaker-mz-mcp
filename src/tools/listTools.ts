@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { ToolDefinition } from '../registry.js';
 
@@ -55,15 +56,9 @@ export const listToolDefinitions: ToolDefinition[] = [
     description:
       'Cheap names-only index for a database table. Returns { id, name } entries instead of full records — use it to look up or sanity-check IDs before wiring them into events, without paying the token cost of a full get_*/search_* dump.',
     inputSchema: {
-      type: 'object',
-      properties: {
-        type: {
-          type: 'string',
-          enum: Object.keys(LISTABLE_FILES),
-          description: 'Which table to index: actors, items, weapons, armors, skills, or maps.',
-        },
-      },
-      required: ['type'],
+      type: z
+        .enum(Object.keys(LISTABLE_FILES) as [ListableType, ...ListableType[]])
+        .describe('Which table to index: actors, items, weapons, armors, skills, or maps.'),
     },
     handler: (ctx, args) => listNames(ctx.projectPath, args.type),
   },

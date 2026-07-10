@@ -1,4 +1,4 @@
-import { Tool } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 
 /**
  * Context passed to every tool handler. Kept as an object (rather than a bare
@@ -10,53 +10,51 @@ export interface ToolContext {
 }
 
 /**
- * A single MCP tool: its schema (advertised to clients) plus the handler that
- * runs it. Each tool module owns its own definitions, so adding a tool means
- * editing one file instead of a central schema list and a central dispatch
- * switch.
+ * A tool's input schema, expressed as a Zod "raw shape" (a map of argument name
+ * to Zod type). The MCP SDK's `registerTool` consumes this directly: it both
+ * advertises the JSON Schema to clients and validates incoming arguments before
+ * the handler runs, so handlers can trust their inputs.
+ */
+export type InputShape = Record<string, z.ZodType>;
+
+/**
+ * A single MCP tool: its schema (advertised to clients and used for validation)
+ * plus the handler that runs it. Each tool module owns its own definitions, so
+ * adding a tool means editing one file instead of a central schema list and a
+ * central dispatch switch.
  */
 export interface ToolDefinition {
   name: string;
   description: string;
-  inputSchema: Tool['inputSchema'];
+  inputSchema: InputShape;
   handler: (ctx: ToolContext, args: Record<string, any>) => Promise<unknown>;
   /**
    * True for tools that write to the project. Such tools accept a `dryRun`
-   * argument (injected into their advertised schema by `toTool`) and are run
-   * inside a commit context so the write can be previewed instead of applied.
+   * argument (injected into their advertised schema at registration time) and
+   * are run inside a commit context so the write can be previewed instead of
+   * applied.
    */
   mutates?: boolean;
 }
 
-const DRY_RUN_PROPERTY = {
-  type: 'boolean',
-  description: 'Preview only: return a diff of what would change without writing to disk.',
+/**
+ * The shared `dryRun` argument advertised on every mutating tool. Injected into
+ * the tool's schema at registration so clients can discover it without each tool
+ * having to declare it.
+ */
+export const DRY_RUN_SHAPE = {
+  dryRun: z
+    .boolean()
+    .optional()
+    .describe('Preview only: return a diff of what would change without writing to disk.'),
 } as const;
 
 /**
- * Strip the handler to produce the MCP-facing `Tool` schema. For mutating tools,
- * advertise the shared `dryRun` argument so clients can discover it.
+ * Resolve the Zod raw shape a tool should be registered with. Mutating tools get
+ * the shared `dryRun` argument folded in.
  */
-export function toTool(def: ToolDefinition): Tool {
-  if (!def.mutates) {
-    return {
-      name: def.name,
-      description: def.description,
-      inputSchema: def.inputSchema,
-    };
-  }
-
-  return {
-    name: def.name,
-    description: def.description,
-    inputSchema: {
-      ...def.inputSchema,
-      properties: {
-        ...(def.inputSchema.properties ?? {}),
-        dryRun: DRY_RUN_PROPERTY,
-      },
-    },
-  };
+export function schemaFor(def: ToolDefinition): InputShape {
+  return def.mutates ? { ...def.inputSchema, ...DRY_RUN_SHAPE } : def.inputSchema;
 }
 
 /** Index definitions by name, failing loudly on duplicates. */

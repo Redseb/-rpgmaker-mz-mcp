@@ -5,6 +5,7 @@ import { skillToolDefinitions } from './skillTools.js';
 import { mapToolDefinitions } from './mapTools.js';
 import { systemToolDefinitions } from './systemTools.js';
 import { listToolDefinitions } from './listTools.js';
+import { validationToolDefinitions } from './validationTools.js';
 
 /**
  * Every tool the server exposes, gathered from the per-domain tool modules.
@@ -18,4 +19,5 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...mapToolDefinitions,
   ...systemToolDefinitions,
   ...listToolDefinitions,
+  ...validationToolDefinitions,
 ];

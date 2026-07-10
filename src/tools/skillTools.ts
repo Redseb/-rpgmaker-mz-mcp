@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Skill } from '../utils/types.js';
@@ -325,11 +326,7 @@ export const skillToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_skill',
     description: 'Get a specific skill by ID',
-    inputSchema: {
-      type: 'object',
-      properties: { skillId: { type: 'number', description: 'The ID of the skill to retrieve' } },
-      required: ['skillId'],
-    },
+    inputSchema: { skillId: z.number().describe('The ID of the skill to retrieve') },
     handler: (ctx, args) => getSkill(ctx.projectPath, args.skillId),
   },
   {
@@ -337,44 +334,35 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a new skill with custom properties',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Skill name' },
-        description: { type: 'string', description: 'Skill description' },
-        iconIndex: { type: 'number', description: 'Icon index (0-1000+)' },
-        mpCost: { type: 'number', description: 'MP cost' },
-        tpCost: { type: 'number', description: 'TP cost' },
-        scope: {
-          type: 'number',
-          description: 'Target scope (1=enemy single, 2=enemy all, 7=ally all, etc.)',
-        },
-        damage: {
-          type: 'object',
-          description: 'Damage configuration',
-          properties: {
-            type: {
-              type: 'number',
-              description: 'Damage type (0=none, 1=HP damage, 3=HP recover, etc.)',
-            },
-            elementId: {
-              type: 'number',
-              description: 'Element ID (0=none, 2=fire, 3=ice, etc.)',
-            },
-            formula: {
-              type: 'string',
-              description: 'Damage formula (e.g., "a.mat * 4 - b.mdf * 2")',
-            },
-          },
-        },
-        effects: {
-          type: 'array',
-          description: 'Skill effects (buffs, debuffs, states, etc.)',
-        },
-        animationId: { type: 'number', description: 'Animation ID' },
-        message1: { type: 'string', description: 'Battle message' },
-        stypeId: { type: 'number', description: 'Skill type (1=magic, 2=special, etc.)' },
-      },
-      required: ['name'],
+      name: z.string().describe('Skill name'),
+      description: z.string().optional().describe('Skill description'),
+      iconIndex: z.number().optional().describe('Icon index (0-1000+)'),
+      mpCost: z.number().optional().describe('MP cost'),
+      tpCost: z.number().optional().describe('TP cost'),
+      scope: z
+        .number()
+        .optional()
+        .describe('Target scope (1=enemy single, 2=enemy all, 7=ally all, etc.)'),
+      damage: z
+        .object({
+          type: z
+            .number()
+            .optional()
+            .describe('Damage type (0=none, 1=HP damage, 3=HP recover, etc.)'),
+          elementId: z.number().optional().describe('Element ID (0=none, 2=fire, 3=ice, etc.)'),
+          formula: z.string().optional().describe('Damage formula (e.g., "a.mat * 4 - b.mdf * 2")'),
+          variance: z.number().optional(),
+          critical: z.boolean().optional(),
+        })
+        .optional()
+        .describe('Damage configuration'),
+      effects: z
+        .array(z.unknown())
+        .optional()
+        .describe('Skill effects (buffs, debuffs, states, etc.)'),
+      animationId: z.number().optional().describe('Animation ID'),
+      message1: z.string().optional().describe('Battle message'),
+      stypeId: z.number().optional().describe('Skill type (1=magic, 2=special, etc.)'),
     },
     handler: (ctx, args) => createSkill(ctx.projectPath, args as Parameters<typeof createSkill>[1]),
   },
@@ -383,19 +371,12 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a damage-dealing skill (simplified)',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Skill name' },
-        damageFormula: { type: 'string', description: 'Damage formula (e.g., "a.mat * 4")' },
-        mpCost: { type: 'number', description: 'MP cost' },
-        scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
-        elementId: {
-          type: 'number',
-          description: 'Element ID (0=none, 2=fire, 3=ice, 4=thunder, etc.)',
-        },
-        description: { type: 'string', description: 'Skill description' },
-      },
-      required: ['name', 'damageFormula', 'mpCost', 'scope'],
+      name: z.string().describe('Skill name'),
+      damageFormula: z.string().describe('Damage formula (e.g., "a.mat * 4")'),
+      mpCost: z.number().describe('MP cost'),
+      scope: z.number().describe('Target scope (1=enemy single, 2=enemy all)'),
+      elementId: z.number().optional().describe('Element ID (0=none, 2=fire, 3=ice, 4=thunder)'),
+      description: z.string().optional().describe('Skill description'),
     },
     handler: (ctx, args) =>
       createDamageSkill(
@@ -413,15 +394,11 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a healing skill (simplified)',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Skill name' },
-        healFormula: { type: 'string', description: 'Heal formula (e.g., "a.mat * 3 + 100")' },
-        mpCost: { type: 'number', description: 'MP cost' },
-        scope: { type: 'number', description: 'Target scope (7=ally all, 11=user)' },
-        description: { type: 'string', description: 'Skill description' },
-      },
-      required: ['name', 'healFormula', 'mpCost', 'scope'],
+      name: z.string().describe('Skill name'),
+      healFormula: z.string().describe('Heal formula (e.g., "a.mat * 3 + 100")'),
+      mpCost: z.number().describe('MP cost'),
+      scope: z.number().describe('Target scope (7=ally all, 11=user)'),
+      description: z.string().optional().describe('Skill description'),
     },
     handler: (ctx, args) =>
       createHealingSkill(
@@ -438,16 +415,12 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a buff skill (simplified)',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Skill name' },
-        buffType: { type: 'number', description: 'Buff type (2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI)' },
-        turns: { type: 'number', description: 'Number of turns the buff lasts' },
-        mpCost: { type: 'number', description: 'MP cost' },
-        scope: { type: 'number', description: 'Target scope (7=ally all, 11=user)' },
-        description: { type: 'string', description: 'Skill description' },
-      },
-      required: ['name', 'buffType', 'turns', 'mpCost', 'scope'],
+      name: z.string().describe('Skill name'),
+      buffType: z.number().describe('Buff type (2=ATK, 3=DEF, 4=MAT, 5=MDF, 6=AGI)'),
+      turns: z.number().describe('Number of turns the buff lasts'),
+      mpCost: z.number().describe('MP cost'),
+      scope: z.number().describe('Target scope (7=ally all, 11=user)'),
+      description: z.string().optional().describe('Skill description'),
     },
     handler: (ctx, args) =>
       createBuffSkill(
@@ -465,19 +438,12 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a state-inflicting skill (poison, sleep, etc.)',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'Skill name' },
-        stateId: {
-          type: 'number',
-          description: 'State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)',
-        },
-        chance: { type: 'number', description: 'Success chance (0.0-1.0)' },
-        mpCost: { type: 'number', description: 'MP cost' },
-        scope: { type: 'number', description: 'Target scope (1=enemy single, 2=enemy all)' },
-        description: { type: 'string', description: 'Skill description' },
-      },
-      required: ['name', 'stateId', 'chance', 'mpCost', 'scope'],
+      name: z.string().describe('Skill name'),
+      stateId: z.number().describe('State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)'),
+      chance: z.number().describe('Success chance (0.0-1.0)'),
+      mpCost: z.number().describe('MP cost'),
+      scope: z.number().describe('Target scope (1=enemy single, 2=enemy all)'),
+      description: z.string().optional().describe('Skill description'),
     },
     handler: (ctx, args) =>
       createStateSkill(
@@ -495,23 +461,15 @@ export const skillToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: "Update a skill's properties",
     inputSchema: {
-      type: 'object',
-      properties: {
-        skillId: { type: 'number', description: 'The skill ID to update' },
-        updates: { type: 'object', description: 'Properties to update' },
-      },
-      required: ['skillId', 'updates'],
+      skillId: z.number().describe('The skill ID to update'),
+      updates: z.record(z.string(), z.unknown()).describe('Properties to update'),
     },
     handler: (ctx, args) => updateSkill(ctx.projectPath, args.skillId, args.updates),
   },
   {
     name: 'search_skills',
     description: 'Search skills by name or description',
-    inputSchema: {
-      type: 'object',
-      properties: { searchTerm: { type: 'string', description: 'Search term' } },
-      required: ['searchTerm'],
-    },
+    inputSchema: { searchTerm: z.string().describe('Search term') },
     handler: (ctx, args) => searchSkills(ctx.projectPath, args.searchTerm),
   },
 ];

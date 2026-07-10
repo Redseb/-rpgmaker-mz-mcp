@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Actor } from '../utils/types.js';
@@ -108,17 +109,13 @@ export const actorToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_actors',
     description: 'Get all actors from the RPG Maker MZ project',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getActors(ctx.projectPath),
   },
   {
     name: 'get_actor',
     description: 'Get a specific actor by ID',
-    inputSchema: {
-      type: 'object',
-      properties: { actorId: { type: 'number', description: 'The ID of the actor to retrieve' } },
-      required: ['actorId'],
-    },
+    inputSchema: { actorId: z.number().describe('The ID of the actor to retrieve') },
     handler: (ctx, args) => getActor(ctx.projectPath, args.actorId),
   },
   {
@@ -126,12 +123,10 @@ export const actorToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: "Update an actor's properties",
     inputSchema: {
-      type: 'object',
-      properties: {
-        actorId: { type: 'number', description: 'The ID of the actor to update' },
-        updates: { type: 'object', description: 'Object containing properties to update' },
-      },
-      required: ['actorId', 'updates'],
+      actorId: z.number().describe('The ID of the actor to update'),
+      updates: z
+        .record(z.string(), z.unknown())
+        .describe('Object containing actor properties to update'),
     },
     handler: (ctx, args) => updateActor(ctx.projectPath, args.actorId, args.updates),
   },
@@ -140,35 +135,27 @@ export const actorToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Create a new actor',
     inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string' },
-        nickname: { type: 'string' },
-        profile: { type: 'string' },
-        classId: { type: 'number' },
-        initialLevel: { type: 'number' },
-        maxLevel: { type: 'number' },
-        characterName: { type: 'string' },
-        characterIndex: { type: 'number' },
-        faceName: { type: 'string' },
-        faceIndex: { type: 'number' },
-        battlerName: { type: 'string' },
-        traits: { type: 'array' },
-        equips: { type: 'array' },
-        note: { type: 'string' },
-      },
-      required: ['name'],
+      name: z.string(),
+      nickname: z.string().optional(),
+      profile: z.string().optional(),
+      classId: z.number().optional(),
+      initialLevel: z.number().optional(),
+      maxLevel: z.number().optional(),
+      characterName: z.string().optional(),
+      characterIndex: z.number().optional(),
+      faceName: z.string().optional(),
+      faceIndex: z.number().optional(),
+      battlerName: z.string().optional(),
+      traits: z.array(z.unknown()).optional(),
+      equips: z.array(z.number()).optional(),
+      note: z.string().optional(),
     },
     handler: (ctx, args) => createActor(ctx.projectPath, args as Omit<Actor, 'id'>),
   },
   {
     name: 'search_actors',
     description: 'Search actors by name or nickname',
-    inputSchema: {
-      type: 'object',
-      properties: { searchTerm: { type: 'string', description: 'The search term to find actors' } },
-      required: ['searchTerm'],
-    },
+    inputSchema: { searchTerm: z.string().describe('The search term to find actors') },
     handler: (ctx, args) => searchActors(ctx.projectPath, args.searchTerm),
   },
 ];

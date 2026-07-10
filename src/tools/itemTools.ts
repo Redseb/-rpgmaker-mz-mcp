@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Item, Weapon, Armor, Skill } from '../utils/types.js';
@@ -178,25 +179,25 @@ export const itemToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_items',
     description: 'Get all items from the project',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getItems(ctx.projectPath),
   },
   {
     name: 'get_weapons',
     description: 'Get all weapons from the project',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getWeapons(ctx.projectPath),
   },
   {
     name: 'get_armors',
     description: 'Get all armors from the project',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getArmors(ctx.projectPath),
   },
   {
     name: 'get_skills',
     description: 'Get all skills from the project',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getSkills(ctx.projectPath),
   },
   {
@@ -204,23 +205,17 @@ export const itemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: "Update an item's properties",
     inputSchema: {
-      type: 'object',
-      properties: {
-        itemId: { type: 'number' },
-        updates: { type: 'object' },
-      },
-      required: ['itemId', 'updates'],
+      itemId: z.number().describe('The ID of the item to update'),
+      updates: z
+        .record(z.string(), z.unknown())
+        .describe('Object containing item properties to update'),
     },
     handler: (ctx, args) => updateItem(ctx.projectPath, args.itemId, args.updates),
   },
   {
     name: 'search_items',
     description: 'Search items by name or description',
-    inputSchema: {
-      type: 'object',
-      properties: { searchTerm: { type: 'string' } },
-      required: ['searchTerm'],
-    },
+    inputSchema: { searchTerm: z.string().describe('The search term to find items') },
     handler: (ctx, args) => searchItems(ctx.projectPath, args.searchTerm),
   },
 ];

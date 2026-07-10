@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildRegistry, toTool, ToolDefinition } from '../src/registry.js';
+import { z } from 'zod';
+import { buildRegistry, schemaFor, DRY_RUN_SHAPE, ToolDefinition } from '../src/registry.js';
 import { allToolDefinitions } from '../src/tools/allTools.js';
 
 const dummy: ToolDefinition = {
   name: 'dummy',
   description: 'test',
-  inputSchema: { type: 'object', properties: {} },
+  inputSchema: {},
   handler: async () => ({ ok: true }),
 };
 
@@ -20,21 +21,23 @@ describe('buildRegistry', () => {
   });
 });
 
-describe('toTool', () => {
-  it('strips the handler, leaving only the MCP schema', () => {
-    const tool = toTool(dummy);
-    expect(tool).toEqual({
-      name: 'dummy',
-      description: 'test',
-      inputSchema: { type: 'object', properties: {} },
-    });
-    expect('handler' in tool).toBe(false);
+describe('schemaFor', () => {
+  it('returns the tool schema unchanged for read-only tools', () => {
+    const shape = schemaFor(dummy);
+    expect('dryRun' in shape).toBe(false);
+  });
+
+  it('folds the shared dryRun argument into mutating tools', () => {
+    const mutating: ToolDefinition = { ...dummy, mutates: true, inputSchema: { x: z.number() } };
+    const shape = schemaFor(mutating);
+    expect(Object.keys(shape).sort()).toEqual(['dryRun', 'x']);
+    expect(shape.dryRun).toBe(DRY_RUN_SHAPE.dryRun);
   });
 });
 
 describe('tool registry contract', () => {
   it('exposes the expected number of tools', () => {
-    expect(allToolDefinitions.length).toBe(40);
+    expect(allToolDefinitions.length).toBe(42);
   });
 
   it('has unique tool names', () => {
@@ -46,11 +49,14 @@ describe('tool registry contract', () => {
     expect(() => buildRegistry(allToolDefinitions)).not.toThrow();
   });
 
-  it('every tool has a non-empty description, object schema, and a handler', () => {
+  it('every tool has a valid name, description, Zod shape, and handler', () => {
     for (const tool of allToolDefinitions) {
       expect(tool.name, `${tool.name} name`).toMatch(/^[a-z][a-z0-9_]*$/);
       expect(tool.description.length, `${tool.name} description`).toBeGreaterThan(0);
-      expect(tool.inputSchema.type, `${tool.name} schema type`).toBe('object');
+      expect(typeof tool.inputSchema, `${tool.name} schema`).toBe('object');
+      for (const [key, schema] of Object.entries(tool.inputSchema)) {
+        expect(schema instanceof z.ZodType, `${tool.name}.${key} is a Zod type`).toBe(true);
+      }
       expect(typeof tool.handler, `${tool.name} handler`).toBe('function');
     }
   });

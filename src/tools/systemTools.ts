@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { SystemData } from '../utils/types.js';
@@ -188,13 +189,13 @@ export const systemToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_system',
     description: 'Get system data',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getSystem(ctx.projectPath),
   },
   {
     name: 'get_variables',
     description: 'Get all game variable names',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getVariables(ctx.projectPath),
   },
   {
@@ -202,9 +203,8 @@ export const systemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Set a variable name',
     inputSchema: {
-      type: 'object',
-      properties: { variableId: { type: 'number' }, name: { type: 'string' } },
-      required: ['variableId', 'name'],
+      variableId: z.number().describe('The 1-based variable ID'),
+      name: z.string().describe('The name to assign'),
     },
     handler: async (ctx, args) => {
       await setVariableName(ctx.projectPath, args.variableId, args.name);
@@ -214,7 +214,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_switches',
     description: 'Get all game switch names',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getSwitches(ctx.projectPath),
   },
   {
@@ -222,9 +222,8 @@ export const systemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Set a switch name',
     inputSchema: {
-      type: 'object',
-      properties: { switchId: { type: 'number' }, name: { type: 'string' } },
-      required: ['switchId', 'name'],
+      switchId: z.number().describe('The 1-based switch ID'),
+      name: z.string().describe('The name to assign'),
     },
     handler: async (ctx, args) => {
       await setSwitchName(ctx.projectPath, args.switchId, args.name);
@@ -234,18 +233,14 @@ export const systemToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_game_title',
     description: 'Get the game title',
-    inputSchema: { type: 'object', properties: {} },
+    inputSchema: {},
     handler: (ctx) => getGameTitle(ctx.projectPath),
   },
   {
     name: 'update_game_title',
     mutates: true,
     description: 'Update the game title',
-    inputSchema: {
-      type: 'object',
-      properties: { title: { type: 'string' } },
-      required: ['title'],
-    },
+    inputSchema: { title: z.string().describe('The new game title') },
     handler: async (ctx, args) => {
       await updateGameTitle(ctx.projectPath, args.title);
       return { success: true };
@@ -256,13 +251,9 @@ export const systemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Update the game starting position',
     inputSchema: {
-      type: 'object',
-      properties: {
-        mapId: { type: 'number' },
-        x: { type: 'number' },
-        y: { type: 'number' },
-      },
-      required: ['mapId', 'x', 'y'],
+      mapId: z.number().describe('Starting map ID'),
+      x: z.number().describe('Starting x tile'),
+      y: z.number().describe('Starting y tile'),
     },
     handler: async (ctx, args) => {
       await updateStartingPosition(ctx.projectPath, args.mapId, args.x, args.y);

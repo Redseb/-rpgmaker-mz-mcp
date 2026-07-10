@@ -131,6 +131,24 @@ Add to your Claude Desktop configuration file:
 
 - `list_names` - Cheap names-only `{ id, name }` index for a table (actors, items, weapons, armors, skills, or maps) — for looking up IDs without a full record dump
 
+### Validation Tools
+
+- `validate_event` - Validate a single event's command lists against the known RPG Maker MZ command table (read-only)
+- `validate_project` - Validate the event command lists of every map in the project, returning aggregated, map-tagged warnings (read-only)
+
+## Input validation
+
+Every tool declares its arguments as a [Zod](https://zod.dev) schema. The server (built on the MCP SDK's high-level `McpServer`) validates incoming arguments against that schema **before** a tool handler runs, so malformed calls are rejected with a clear error instead of writing garbage to disk. For example, calling `get_actor` with a non-numeric `actorId` returns an `Input validation error` naming the offending field.
+
+## Event validation (warn-by-default)
+
+Event command lists are checked against a table of known RPG Maker MZ command codes (`101` Show Text, `201` Transfer Player, `122` Control Variables, …). Validation is **advisory** — it never blocks a write:
+
+- The `validate_event` and `validate_project` tools report problems without changing anything.
+- The event-writing tools (`create_map_event`, `update_map_event`, `add_event_command`) echo any warnings for the resulting event alongside their normal response.
+
+Warnings flag things like a wrong parameter count for a known command, a command list not terminated by the code-`0` end marker, or an unrecognized command code (which may simply be a plugin command — hence a warning, not an error).
+
 ## Dry-run preview
 
 Every tool that writes to the project accepts an optional `dryRun` argument. When `dryRun: true`, the tool computes what it _would_ write and returns a diff instead of touching any files:
@@ -296,16 +314,24 @@ CI runs lint, format check, and build on every push and pull request (see `.gith
 ```
 rpgmaker-mz-mcp/
 ├── src/
-│   ├── index.ts              # MCP server: tool schemas + dispatch
+│   ├── index.ts              # McpServer bootstrap: registers every tool, dispatch + dry-run
+│   ├── registry.ts           # ToolDefinition shape + shared dryRun schema
 │   ├── tools/
+│   │   ├── allTools.ts       # Assembles every tool module's definitions
 │   │   ├── actorTools.ts     # Actor management
 │   │   ├── itemTools.ts      # Item/weapon/armor management
 │   │   ├── skillTools.ts     # Skill creation helpers
 │   │   ├── mapTools.ts       # Map and event management
-│   │   └── systemTools.ts    # System settings, switches, variables
+│   │   ├── systemTools.ts    # System settings, switches, variables
+│   │   ├── listTools.ts      # Names-only index tool
+│   │   └── validationTools.ts # validate_event / validate_project
+│   ├── validation/
+│   │   └── eventCommands.ts  # Known-command table + event validators
 │   └── utils/
 │       ├── fileHandler.ts    # JSON I/O + project path helpers
+│       ├── commit.ts         # Single write choke point: diff, dry-run, no-op skipping
 │       └── types.ts          # RPG Maker MZ data type definitions
+├── test/                     # Vitest suite
 ├── dist/                     # Compiled JavaScript (gitignored)
 ├── eslint.config.js
 ├── .prettierrc.json
@@ -318,7 +344,7 @@ rpgmaker-mz-mcp/
 
 This fork is being extended beyond the original CRUD tools toward full level-design support. Planned, roughly in dependency order:
 
-- **Correctness:** validation on write, lightweight names-only index tools, dry-run/diff previews, automatic pre-write backups.
+- **Correctness:** ✅ schema-validated inputs (Zod), ✅ warn-by-default event validation + `validate_event`/`validate_project`, ✅ names-only index tools, ✅ dry-run/diff previews. Still planned: automatic pre-write backups.
 - **Missing subsystems:** multi-map support (`create_map` + map tree), class editor, enemy/troop tools, common events, move-route builder, plugin-command support.
 - **Tile painting (headline feature):** a semantic tile catalog, a deterministic autotile shape calculator, layer-aware paint commands across the six map layers, and passability/terrain-tag exposure.
 
