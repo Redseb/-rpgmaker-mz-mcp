@@ -1,4 +1,4 @@
-import { readFile, writeFile, readdir } from 'fs/promises';
+import { readFile, writeFile, readdir, access } from 'fs/promises';
 import { join, extname } from 'path';
 
 /**
@@ -40,6 +40,18 @@ export async function listFiles(dirPath: string, extension: string): Promise<str
     return files.filter((file) => extname(file) === extension);
   } catch (error) {
     throw new Error(`Failed to list files in ${dirPath}: ${error}`);
+  }
+}
+
+/**
+ * Whether a file (or directory) exists at the given path.
+ */
+export async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 

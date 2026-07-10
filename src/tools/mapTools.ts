@@ -1,9 +1,13 @@
 import { z } from 'zod';
-import { readJsonFile, getMapPath, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, getMapPath, getDataPath, fileExists } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
-import { MapData, MapEvent, EventCommand } from '../utils/types.js';
+import { MapData, MapEvent, MapInfo, EventCommand } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 import { validateEvent } from '../validation/eventCommands.js';
+
+/** Dimensions the RPG Maker MZ editor defaults to when creating a new map. */
+const DEFAULT_MAP_WIDTH = 17;
+const DEFAULT_MAP_HEIGHT = 13;
 
 /**
  * Attach warn-by-default validation results to an event-write response. Warnings
@@ -30,9 +34,119 @@ export async function getMap(projectPath: string, mapId: number): Promise<MapDat
 /**
  * Get all map info
  */
-export async function getMapInfos(projectPath: string): Promise<any[]> {
+export async function getMapInfos(projectPath: string): Promise<(MapInfo | null)[]> {
   const mapInfosPath = getDataPath(projectPath, 'MapInfos.json');
-  return await readJsonFile<any[]>(mapInfosPath);
+  return await readJsonFile<(MapInfo | null)[]>(mapInfosPath);
+}
+
+/**
+ * Build a blank MapData mirroring what the RPG Maker MZ editor writes for a
+ * freshly-created map: every tile zeroed (unpainted) across all 6 layers and no
+ * events. Field order matches the editor's own output so round-tripped files
+ * stay tidy. Kept pure (no I/O) so the template shape can be unit-tested.
+ */
+export function blankMapData(width: number, height: number, tilesetId: number): MapData {
+  return {
+    autoplayBgm: false,
+    autoplayBgs: false,
+    battleback1Name: '',
+    battleback2Name: '',
+    bgm: { name: '', pan: 0, pitch: 100, volume: 90 },
+    bgs: { name: '', pan: 0, pitch: 100, volume: 90 },
+    disableDashing: false,
+    displayName: '',
+    encounterList: [],
+    encounterStep: 30,
+    height,
+    note: '',
+    parallaxLoopX: false,
+    parallaxLoopY: false,
+    parallaxName: '',
+    parallaxShow: true,
+    parallaxSx: 0,
+    parallaxSy: 0,
+    scrollType: 0,
+    specifyBattleback: false,
+    tilesetId,
+    width,
+    data: new Array(width * height * 6).fill(0),
+    events: [],
+  };
+}
+
+/**
+ * Create a new map: write a fresh `data/MapNNN.json` and register it in the map
+ * tree (`data/MapInfos.json`). Allocates the next unused map id, appends a tree
+ * entry, and lays down a blank (all-tiles-zeroed) map of the given size.
+ *
+ * Both files are written through the commit choke point, so a dry-run previews
+ * the new map file *and* the MapInfos entry together. Does not touch
+ * `System.json`: the editor's map tree is driven entirely by MapInfos, so a new
+ * entry is enough for the editor to see the map (`System.editMapId` only tracks
+ * which map is open on launch).
+ */
+export async function createMap(
+  projectPath: string,
+  options: {
+    name: string;
+    width?: number;
+    height?: number;
+    parentId?: number;
+    tilesetId?: number;
+  },
+): Promise<{ mapId: number; mapInfo: MapInfo; map: MapData }> {
+  const width = options.width ?? DEFAULT_MAP_WIDTH;
+  const height = options.height ?? DEFAULT_MAP_HEIGHT;
+  const tilesetId = options.tilesetId ?? 1;
+  const parentId = options.parentId ?? 0;
+
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new Error(`Map dimensions must be positive integers (got ${width}x${height})`);
+  }
+
+  const infos = await getMapInfos(projectPath);
+
+  // A non-root parent must point at an existing map, or the map is orphaned in
+  // the tree.
+  if (parentId !== 0 && !infos[parentId]) {
+    throw new Error(`parentId ${parentId} does not match any existing map`);
+  }
+
+  // Allocate a fresh id: one past the highest existing map id. MapInfos is a
+  // 1-indexed array whose slot 0 is null.
+  const maxId = infos.reduce((max, info) => (info && info.id > max ? info.id : max), 0);
+  const newId = maxId + 1;
+
+  // Guard: never clobber an existing MapNNN.json. With correct id allocation the
+  // file should be genuinely unused; a collision means the tree and the files on
+  // disk are out of sync, which we surface rather than silently overwrite.
+  const mapPath = getMapPath(projectPath, newId);
+  if (await fileExists(mapPath)) {
+    throw new Error(
+      `Map file for id ${newId} already exists though the id is unused in MapInfos — refusing to overwrite (${mapPath})`,
+    );
+  }
+
+  const maxOrder = infos.reduce((max, info) => (info && info.order > max ? info.order : max), 0);
+  const mapInfo: MapInfo = {
+    id: newId,
+    expanded: false,
+    name: options.name,
+    order: maxOrder + 1,
+    parentId,
+    scrollX: 0,
+    scrollY: 0,
+  };
+  infos[newId] = mapInfo;
+
+  const map = blankMapData(width, height, tilesetId);
+
+  // Write the map file first, then register it in the tree — both through the
+  // commit choke point so dry-run previews both writes.
+  await commitChange(mapPath, map);
+  await commitChange(getDataPath(projectPath, 'MapInfos.json'), infos);
+
+  return { mapId: newId, mapInfo, map };
 }
 
 /**
@@ -273,6 +387,31 @@ export const mapToolDefinitions: ToolDefinition[] = [
     description: 'Get information about all maps',
     inputSchema: {},
     handler: (ctx) => getMapInfos(ctx.projectPath),
+  },
+  {
+    name: 'create_map',
+    mutates: true,
+    description:
+      'Create a new blank map: writes a new data/MapNNN.json (all tiles unpainted) and registers it in the map tree (MapInfos.json). Allocates the next unused map id and returns it. Paint tiles with set_map_tile and add events afterward.',
+    inputSchema: {
+      name: z.string().describe('Map name shown in the editor map tree'),
+      width: z.number().int().positive().optional().describe('Width in tiles (default 17)'),
+      height: z.number().int().positive().optional().describe('Height in tiles (default 13)'),
+      parentId: z
+        .number()
+        .int()
+        .optional()
+        .describe('Parent map id in the tree; 0 (default) = top level'),
+      tilesetId: z.number().int().positive().optional().describe('Tileset id (default 1)'),
+    },
+    handler: (ctx, args) =>
+      createMap(ctx.projectPath, {
+        name: args.name,
+        width: args.width,
+        height: args.height,
+        parentId: args.parentId,
+        tilesetId: args.tilesetId,
+      }),
   },
   {
     name: 'get_map_events',

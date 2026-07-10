@@ -158,8 +158,25 @@ export interface MapData {
   scrollType: number;
   specifyBattleback: boolean;
   tilesetId: number;
+  note: string;
   data: number[];
   events: (MapEvent | null)[];
+}
+
+/**
+ * An entry in `data/MapInfos.json` — the map tree the editor displays. The file
+ * is a 1-indexed array (slot 0 is `null`) whose index matches the map's `id`.
+ * `parentId` 0 means a top-level map; `order` sequences siblings in the tree;
+ * `scrollX`/`scrollY` are the editor's remembered scroll position (cosmetic).
+ */
+export interface MapInfo {
+  id: number;
+  name: string;
+  parentId: number;
+  order: number;
+  expanded: boolean;
+  scrollX: number;
+  scrollY: number;
 }
 
 export interface MapEvent {
