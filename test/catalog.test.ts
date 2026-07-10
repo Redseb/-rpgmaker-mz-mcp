@@ -80,3 +80,38 @@ describe('findTiles', () => {
     expect(findTiles(OVERWORLD, 'nonesuch')).toEqual([]);
   });
 });
+
+describe('project-catalog overlay (Phase 4)', () => {
+  // A tileset using one custom autotile sheet the built-in catalog doesn't cover.
+  const CUSTOM = ['', 'Custom_A2', '', '', '', '', '', '', ''];
+  const overlay = { Custom_A2: ['Emerald Grass', 'Cracked Earth'] };
+
+  it('resolves a custom sheet from the overlay and tags source', () => {
+    expect(hasCatalog(CUSTOM)).toBe(false); // uncovered by built-in
+    expect(hasCatalog(CUSTOM, overlay)).toBe(true);
+
+    const entries = catalogForTileset(CUSTOM, undefined, overlay);
+    expect(entries.map((e) => e.name)).toEqual(['Emerald Grass', 'Cracked Earth']);
+    const grass = entries.find((e) => e.name === 'Emerald Grass')!;
+    expect(grass).toMatchObject({ sheet: 'Custom_A2', role: 'A2', autotile: true, kind: 16 });
+    expect(grass.tileId).toBe(makeAutotileId(16, 0)); // A2 first kind, shape-0 base
+    expect(grass.source).toBe('project');
+
+    expect(findTiles(CUSTOM, 'earth', overlay).map((e) => e.name)).toEqual(['Cracked Earth']);
+  });
+
+  it('built-in names stay authoritative and are tagged builtin', () => {
+    const entries = catalogForTileset(OVERWORLD, undefined, overlay);
+    const grass = entries.find((e) => e.name === 'Grassland A')!;
+    expect(grass.source).toBe('builtin');
+    // The overlay for an unrelated sheet doesn't leak into Overworld sheets.
+    expect(entries.some((e) => e.name === 'Emerald Grass')).toBe(false);
+  });
+
+  it('an overlay entry replaces the built-in names for that same sheet', () => {
+    const relabeled = { World_A2: ['Meadow'] };
+    const entries = catalogForTileset(OVERWORLD, 'World_A2', relabeled);
+    expect(entries.map((e) => e.name)).toEqual(['Meadow']);
+    expect(entries[0].source).toBe('project');
+  });
+});

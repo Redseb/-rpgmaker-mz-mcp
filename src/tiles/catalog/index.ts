@@ -66,22 +66,43 @@ export interface CatalogEntry {
   autotile: boolean;
   /** Global autotile kind (autotiles only). */
   kind?: number;
+  /**
+   * Where the name came from: `builtin` = RPG Maker's own labels (authoritative);
+   * `project` = a project-scoped catalog written by the 3f vision-bootstrap skill
+   * (draft — a name a human may still be verifying).
+   */
+  source: 'builtin' | 'project';
 }
 
 /**
- * Every cataloged entry for a tileset, given its `tilesetNames`. Walks each slot,
- * looks the sheet filename up in the catalog, and emits an entry per named tile.
- * Optionally restrict to one sheet by filename ("World_A2") or slot role ("A2").
+ * A project-scoped name overlay: sheet filename → names by local index. Produced
+ * by loading the 3f skill's `data/tilecatalog/*.json` files (the loader lives in
+ * the tools layer since it does I/O). An overlay entry for a sheet **replaces**
+ * the built-in names for that sheet (a project's own labels win for its sheets).
  */
-export function catalogForTileset(tilesetNames: string[], sheetFilter?: string): CatalogEntry[] {
+export type CatalogOverlay = Record<string, string[]>;
+
+/**
+ * Every cataloged entry for a tileset, given its `tilesetNames`. Walks each slot,
+ * looks the sheet filename up in the catalog (built-in names, plus any `overlay`
+ * from project catalogs), and emits an entry per named tile. Optionally restrict
+ * to one sheet by filename ("World_A2") or slot role ("A2").
+ */
+export function catalogForTileset(
+  tilesetNames: string[],
+  sheetFilter?: string,
+  overlay?: CatalogOverlay,
+): CatalogEntry[] {
+  const catalog = overlay ? { ...CATALOG, ...overlay } : CATALOG;
   const entries: CatalogEntry[] = [];
   for (let slot = 0; slot < SLOT_ROLES.length; slot++) {
     const file = tilesetNames[slot];
     if (!file) continue;
     const role = SLOT_ROLES[slot];
     if (sheetFilter && sheetFilter !== file && sheetFilter !== role) continue;
-    const names = CATALOG[file];
+    const names = catalog[file];
     if (!names) continue;
+    const source: 'builtin' | 'project' = overlay && overlay[file] ? 'project' : 'builtin';
     const autotile = isAutotileSlot(role);
     names.forEach((name, localIndex) => {
       if (!name || name === 'Transparent') return; // skip the blank/transparent slot
@@ -93,6 +114,7 @@ export function catalogForTileset(tilesetNames: string[], sheetFilter?: string):
         tileId,
         autotile,
         ...(autotile ? { kind: AUTOTILE_BASE_KIND[role] + localIndex } : {}),
+        source,
       });
     });
   }
@@ -103,12 +125,19 @@ export function catalogForTileset(tilesetNames: string[], sheetFilter?: string):
  * Catalog entries for a tileset whose name matches `query` (case-insensitive
  * substring). The bridge for "give me a grass tile" → a paintable tile id.
  */
-export function findTiles(tilesetNames: string[], query: string): CatalogEntry[] {
+export function findTiles(
+  tilesetNames: string[],
+  query: string,
+  overlay?: CatalogOverlay,
+): CatalogEntry[] {
   const q = query.toLowerCase();
-  return catalogForTileset(tilesetNames).filter((e) => e.name.toLowerCase().includes(q));
+  return catalogForTileset(tilesetNames, undefined, overlay).filter((e) =>
+    e.name.toLowerCase().includes(q),
+  );
 }
 
-/** Whether any sheet of a tileset is covered by the catalog. */
-export function hasCatalog(tilesetNames: string[]): boolean {
-  return tilesetNames.some((f) => f && CATALOG[f]);
+/** Whether any sheet of a tileset is covered by the catalog (built-in or overlay). */
+export function hasCatalog(tilesetNames: string[], overlay?: CatalogOverlay): boolean {
+  const catalog = overlay ? { ...CATALOG, ...overlay } : CATALOG;
+  return tilesetNames.some((f) => f && catalog[f]);
 }
