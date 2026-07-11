@@ -8,6 +8,14 @@ import {
   exitEvent,
   label,
   jumpToLabel,
+  controlSwitches,
+  controlSelfSwitch,
+  controlVariables,
+  changeGold,
+  changeItems,
+  changeWeapons,
+  changeArmors,
+  changePartyMember,
 } from '../src/events/commandBuilders.js';
 
 /**
@@ -150,5 +158,74 @@ describe('flow commands', () => {
     expect(exitEvent()).toEqual({ code: 115, indent: 0, parameters: [] });
     expect(label('start')).toEqual({ code: 118, indent: 0, parameters: ['start'] });
     expect(jumpToLabel('start')).toEqual({ code: 119, indent: 0, parameters: ['start'] });
+  });
+});
+
+/**
+ * Game-state builders (Phase 5e-2). Param encodings verified against the corescript
+ * command121/122/123/125/126/127/128/129 handlers (rmmz_objects.js v1.9.0), with the
+ * annotated shapes cross-checked against real editor output (TutorialProject).
+ */
+describe('game-state builders (byte-exact)', () => {
+  it('control switches / self switch encode on/off and ranges', () => {
+    // Real editor output: [startId, endId, value(0 on/1 off)].
+    expect(controlSwitches(3, 3, 'on')).toEqual({ code: 121, indent: 0, parameters: [3, 3, 0] });
+    expect(controlSwitches(2, 5, 'off')).toEqual({ code: 121, indent: 0, parameters: [2, 5, 1] });
+    expect(controlSwitches(1, 1).parameters).toEqual([1, 1, 0]); // default 'on'
+    expect(controlSelfSwitch('A', 'off')).toEqual({ code: 123, indent: 0, parameters: ['A', 1] });
+  });
+
+  it('control variables encodes every operand mode', () => {
+    // Real editor output: set var 1 to constant 1 -> [1,1,0,0,1].
+    expect(controlVariables(1, 'set', { type: 'constant', value: 1 }).parameters).toEqual([
+      1, 1, 0, 0, 1,
+    ]);
+    expect(controlVariables(3, 'add', { type: 'variable', variableId: 7 }).parameters).toEqual([
+      3, 3, 1, 1, 7,
+    ]);
+    expect(
+      controlVariables(4, 'set', { type: 'random', min: 1, max: 6 }, { endId: 5 }).parameters,
+    ).toEqual([4, 5, 0, 2, 1, 6]);
+    // game_data: gold readout (dataType 7 "other", param1 2 = Gold).
+    expect(
+      controlVariables(2, 'set', { type: 'game_data', dataType: 7, param1: 2 }).parameters,
+    ).toEqual([2, 2, 0, 3, 7, 2, 0]);
+  });
+
+  it('change gold / items / weapons / armors encode operateValue + includeEquip', () => {
+    // Real editor output: gain 1000 gold -> [0,0,1000].
+    expect(changeGold('increase', { type: 'constant', value: 1000 }).parameters).toEqual([
+      0, 0, 1000,
+    ]);
+    expect(changeGold('decrease', { type: 'variable', variableId: 4 }).parameters).toEqual([
+      1, 1, 4,
+    ]);
+    // Real editor output: gain 2 of item 11 -> [11,0,0,2].
+    expect(changeItems(11, 'increase', { type: 'constant', value: 2 }).parameters).toEqual([
+      11, 0, 0, 2,
+    ]);
+    expect(changeWeapons(3, 'decrease', { type: 'constant', value: 1 }, true).parameters).toEqual([
+      3,
+      1,
+      0,
+      1,
+      true,
+    ]);
+    expect(changeArmors(5, 'increase', { type: 'constant', value: 1 }).parameters).toEqual([
+      5,
+      0,
+      0,
+      1,
+      false,
+    ]);
+  });
+
+  it('change party member encodes add/remove + initialize', () => {
+    expect(changePartyMember(2, 'add', true)).toEqual({
+      code: 129,
+      indent: 0,
+      parameters: [2, 0, true],
+    });
+    expect(changePartyMember(2, 'remove').parameters).toEqual([2, 1, false]);
   });
 });

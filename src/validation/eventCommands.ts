@@ -75,9 +75,9 @@ export const KNOWN_COMMANDS: Record<number, CommandSpec> = {
   124: { name: 'Control Timer', check: expectAtLeast(1) },
   125: { name: 'Change Gold', check: expectLength(3) },
   126: { name: 'Change Items', check: expectLength(4) },
-  127: { name: 'Change Weapons' },
-  128: { name: 'Change Armors' },
-  129: { name: 'Change Party Member' },
+  127: { name: 'Change Weapons', check: expectLength(5) },
+  128: { name: 'Change Armors', check: expectLength(5) },
+  129: { name: 'Change Party Member', check: expectLength(3) },
   // Movement / character
   201: { name: 'Transfer Player', check: expectLength(6) },
   202: { name: 'Set Vehicle Location' },

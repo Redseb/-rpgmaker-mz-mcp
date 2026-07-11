@@ -8,7 +8,13 @@ import {
   eventCommandToolDefinitions,
 } from '../src/tools/eventCommandTools.js';
 import { blankMapData } from '../src/tools/mapTools.js';
-import { showText, showChoices } from '../src/events/commandBuilders.js';
+import {
+  showText,
+  showChoices,
+  controlSwitches,
+  changeGold,
+  changePartyMember,
+} from '../src/events/commandBuilders.js';
 import { MapData, MapEvent, EventCommand } from '../src/utils/types.js';
 
 function eventWithEmptyPage(id: number): MapEvent {
@@ -86,6 +92,53 @@ describe('build_* tools (read-only)', () => {
   });
 });
 
+describe('game-state build tools (5e-2, read-only)', () => {
+  it('are not mutating and delegate to the builders', async () => {
+    for (const name of [
+      'build_control_switch',
+      'build_control_variable',
+      'build_change_gold',
+      'build_change_items',
+      'build_change_party_member',
+    ]) {
+      expect(get(name).mutates).toBeUndefined();
+    }
+
+    const sw = (await get('build_control_switch').handler(
+      { projectPath: '' },
+      { scope: 'switch', switchId: 5, value: 'off' },
+    )) as { command: EventCommand };
+    expect(sw.command).toEqual({ code: 121, indent: 0, parameters: [5, 5, 1] });
+
+    const selfSw = (await get('build_control_switch').handler(
+      { projectPath: '' },
+      { scope: 'self_switch', name: 'B' },
+    )) as { command: EventCommand };
+    expect(selfSw.command).toEqual({ code: 123, indent: 0, parameters: ['B', 0] });
+
+    const v = (await get('build_control_variable').handler(
+      { projectPath: '' },
+      { variableId: 10, operation: 'add', operand: { type: 'constant', value: 5 } },
+    )) as { command: EventCommand };
+    expect(v.command).toEqual({ code: 122, indent: 0, parameters: [10, 10, 1, 0, 5] });
+
+    const items = (await get('build_change_items').handler(
+      { projectPath: '' },
+      { kind: 'weapon', id: 3, operation: 'increase', operand: { type: 'constant', value: 1 } },
+    )) as { command: EventCommand };
+    expect(items.command).toEqual({ code: 127, indent: 0, parameters: [3, 0, 0, 1, false] });
+  });
+
+  it('build_control_switch throws when scope-required fields are missing', async () => {
+    await expect(
+      get('build_control_switch').handler({ projectPath: '' }, { scope: 'switch' }),
+    ).rejects.toThrow(/switchId/);
+    await expect(
+      get('build_control_switch').handler({ projectPath: '' }, { scope: 'self_switch' }),
+    ).rejects.toThrow(/name/);
+  });
+});
+
 describe('insert_event_commands (integration)', () => {
   let dir: string;
 
@@ -119,6 +172,20 @@ describe('insert_event_commands (integration)', () => {
     expect(result.event.pages[0].list.map((c) => c.code)).toEqual([
       102, 402, 101, 401, 0, 402, 101, 401, 0, 404, 0,
     ]);
+  });
+
+  it('inserts a game-state sequence and keeps the page valid (no warnings)', async () => {
+    const commands = [
+      controlSwitches(1, 1, 'on'),
+      changeGold('increase', { type: 'constant', value: 100 }),
+      changePartyMember(2, 'add'),
+    ];
+    const result = (await get('insert_event_commands').handler(
+      { projectPath: dir },
+      { mapId: 1, eventId: 1, pageIndex: 0, commands },
+    )) as { event: MapEvent; warnings?: unknown[] };
+    expect(result.warnings).toBeUndefined();
+    expect(result.event.pages[0].list.map((c) => c.code)).toEqual([121, 125, 129, 0]);
   });
 
   it('surfaces validation warnings for a malformed inserted command', async () => {

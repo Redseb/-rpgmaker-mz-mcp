@@ -27,9 +27,20 @@ const CODE = {
   EXIT_EVENT: 115,
   LABEL: 118,
   JUMP_TO_LABEL: 119,
+  CONTROL_SWITCHES: 121,
+  CONTROL_VARIABLES: 122,
+  CONTROL_SELF_SWITCH: 123,
+  CHANGE_GOLD: 125,
+  CHANGE_ITEMS: 126,
+  CHANGE_WEAPONS: 127,
+  CHANGE_ARMORS: 128,
+  CHANGE_PARTY_MEMBER: 129,
   WAIT: 230,
   END_OF_LIST: 0,
 } as const;
+
+/** Encode a switch/self-switch on/off value as the engine's code (0 on, 1 off). */
+const onOff = (value?: 'on' | 'off'): number => (value === 'off' ? 1 : 0);
 
 /** Build one event command with an always-present parameters array. */
 function cmd(code: number, indent: number, parameters: unknown[] = []): EventCommand {
@@ -278,4 +289,191 @@ export function label(name: string, indent = 0): EventCommand {
 /** Jump to Label (command 119) — jumps to the matching {@link label} by name. */
 export function jumpToLabel(name: string, indent = 0): EventCommand {
   return cmd(CODE.JUMP_TO_LABEL, indent, [String(name)]);
+}
+
+// --- 5e-2 game state ---
+
+/**
+ * Control Switches (command 121) — turn a switch (or an inclusive range of
+ * switches `startId..endId`) on or off. Pass the same id for `endId` to set a
+ * single switch. On disk: `[startId, endId, value]` where value 0 = ON, 1 = OFF.
+ */
+export function controlSwitches(
+  startId: number,
+  endId: number,
+  value: 'on' | 'off' = 'on',
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CONTROL_SWITCHES, indent, [startId, endId, onOff(value)]);
+}
+
+/**
+ * Control Self Switch (command 123) — turn one of the current event's self
+ * switches (A–D) on or off. On disk: `[name, value]` (value 0 = ON, 1 = OFF).
+ */
+export function controlSelfSwitch(
+  name: 'A' | 'B' | 'C' | 'D',
+  value: 'on' | 'off' = 'on',
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CONTROL_SELF_SWITCH, indent, [name, onOff(value)]);
+}
+
+/** The arithmetic applied to the target variable(s) by Control Variables. */
+export type VariableOperation = 'set' | 'add' | 'sub' | 'mul' | 'div' | 'mod';
+const VARIABLE_OPERATION_CODE: Record<VariableOperation, number> = {
+  set: 0,
+  add: 1,
+  sub: 2,
+  mul: 3,
+  div: 4,
+  mod: 5,
+};
+
+/**
+ * The right-hand operand of a Control Variables command. `game_data` reaches the
+ * engine's `gameDataOperand(dataType, param1, param2)` table (dataType 0 item /
+ * 1 weapon / 2 armor count, 3 actor, 4 enemy, 5 character, 6 party, 7 other,
+ * 8 last — see the corescript for each type's param1/param2 meanings).
+ */
+export type VariableOperand =
+  | { type: 'constant'; value: number }
+  | { type: 'variable'; variableId: number }
+  | { type: 'random'; min: number; max: number }
+  | { type: 'game_data'; dataType: number; param1?: number; param2?: number };
+
+/** Turn a {@link VariableOperand} into the trailing code-122 parameters (from params[3]). */
+function variableOperandParams(operand: VariableOperand): unknown[] {
+  switch (operand.type) {
+    case 'constant':
+      return [0, operand.value];
+    case 'variable':
+      return [1, operand.variableId];
+    case 'random':
+      return [2, operand.min, operand.max];
+    case 'game_data':
+      return [3, operand.dataType, operand.param1 ?? 0, operand.param2 ?? 0];
+  }
+}
+
+export interface ControlVariablesOptions {
+  /** Range end id (inclusive); defaults to `variableId` (a single variable). */
+  endId?: number;
+  /** Indentation level. Default 0. */
+  indent?: number;
+}
+
+/**
+ * Control Variables (command 122) — apply `operation` to a variable (or an
+ * inclusive `variableId..endId` range) using `operand`. On disk:
+ * `[startId, endId, operationType, operandType, ...operandParams]`.
+ */
+export function controlVariables(
+  variableId: number,
+  operation: VariableOperation,
+  operand: VariableOperand,
+  options: ControlVariablesOptions = {},
+): EventCommand {
+  return cmd(CODE.CONTROL_VARIABLES, options.indent ?? 0, [
+    variableId,
+    options.endId ?? variableId,
+    VARIABLE_OPERATION_CODE[operation],
+    ...variableOperandParams(operand),
+  ]);
+}
+
+/** Increase or decrease, shared by Change Gold/Items/Weapons/Armors. */
+export type GainOperation = 'increase' | 'decrease';
+/** A constant or variable amount, shared by the Change Gold/Items/Weapons/Armors commands. */
+export type GainOperand =
+  { type: 'constant'; value: number } | { type: 'variable'; variableId: number };
+
+/**
+ * The engine's `operateValue(operation, operandType, operand)` triple:
+ * `[operation(0 increase/1 decrease), operandType(0 constant/1 variable), operand]`.
+ */
+function operateValueParams(operation: GainOperation, operand: GainOperand): unknown[] {
+  const opCode = operation === 'decrease' ? 1 : 0;
+  return operand.type === 'variable' ? [opCode, 1, operand.variableId] : [opCode, 0, operand.value];
+}
+
+/** Change Gold (command 125) — gain or lose gold by a constant or variable amount. */
+export function changeGold(
+  operation: GainOperation,
+  operand: GainOperand,
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CHANGE_GOLD, indent, operateValueParams(operation, operand));
+}
+
+/**
+ * Change Items (command 126) — gain or lose `itemId` from the party inventory by
+ * a constant or variable amount. On disk: `[itemId, operation, operandType, operand]`.
+ */
+export function changeItems(
+  itemId: number,
+  operation: GainOperation,
+  operand: GainOperand,
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CHANGE_ITEMS, indent, [itemId, ...operateValueParams(operation, operand)]);
+}
+
+/**
+ * Change Weapons (command 127) — gain or lose `weaponId`. `includeEquip` (default
+ * false) also counts weapons currently equipped by party members when removing.
+ * On disk: `[weaponId, operation, operandType, operand, includeEquip]`.
+ */
+export function changeWeapons(
+  weaponId: number,
+  operation: GainOperation,
+  operand: GainOperand,
+  includeEquip = false,
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CHANGE_WEAPONS, indent, [
+    weaponId,
+    ...operateValueParams(operation, operand),
+    includeEquip,
+  ]);
+}
+
+/**
+ * Change Armors (command 128) — gain or lose `armorId`. `includeEquip` (default
+ * false) also counts armors currently equipped when removing.
+ * On disk: `[armorId, operation, operandType, operand, includeEquip]`.
+ */
+export function changeArmors(
+  armorId: number,
+  operation: GainOperation,
+  operand: GainOperand,
+  includeEquip = false,
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CHANGE_ARMORS, indent, [
+    armorId,
+    ...operateValueParams(operation, operand),
+    includeEquip,
+  ]);
+}
+
+/** Add an actor to, or remove one from, the party (Change Party Member). */
+export type PartyMemberOperation = 'add' | 'remove';
+
+/**
+ * Change Party Member (command 129) — add or remove `actorId`. `initialize`
+ * (default false, add only) resets the actor to their initial state on add.
+ * On disk: `[actorId, operation(0 add/1 remove), initialize]`.
+ */
+export function changePartyMember(
+  actorId: number,
+  operation: PartyMemberOperation,
+  initialize = false,
+  indent = 0,
+): EventCommand {
+  return cmd(CODE.CHANGE_PARTY_MEMBER, indent, [
+    actorId,
+    operation === 'remove' ? 1 : 0,
+    initialize,
+  ]);
 }

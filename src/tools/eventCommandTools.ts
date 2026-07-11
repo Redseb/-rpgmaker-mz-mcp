@@ -12,10 +12,22 @@ import {
   exitEvent,
   label,
   jumpToLabel,
+  controlSwitches,
+  controlSelfSwitch,
+  controlVariables,
+  changeGold,
+  changeItems,
+  changeWeapons,
+  changeArmors,
+  changePartyMember,
   BranchCondition,
   ShowTextOptions,
   ShowChoicesOptions,
   ConditionalBranchOptions,
+  VariableOperation,
+  VariableOperand,
+  GainOperation,
+  GainOperand,
 } from '../events/commandBuilders.js';
 
 /** Zod shape for a raw event command (used where callers pass builder output back). */
@@ -148,6 +160,67 @@ function toBranchCondition(c: Record<string, unknown>): BranchCondition {
       return { type: 'item', itemId: c.itemId as number };
     default:
       throw new Error(`Unknown condition type: ${String(c.type)}`);
+  }
+}
+
+/** Zod shape for a Change Gold/Items/Weapons/Armors operand (constant or variable amount). */
+const gainOperandShape = z
+  .object({
+    type: z.enum(['constant', 'variable']).describe('constant amount or a variable value'),
+    value: z.number().optional().describe('constant: the amount'),
+    variableId: z.number().int().optional().describe('variable: the variable id to read'),
+  })
+  .describe('The amount to gain/lose (constant or variable)');
+
+/** Map the flat gain-operand input to the discriminated {@link GainOperand}. */
+function toGainOperand(o: Record<string, unknown>): GainOperand {
+  return o.type === 'variable'
+    ? { type: 'variable', variableId: o.variableId as number }
+    : { type: 'constant', value: (o.value as number) ?? 0 };
+}
+
+/** Zod shape for a Control Variables operand (constant / variable / random / game_data). */
+const variableOperandShape = z
+  .object({
+    type: z
+      .enum(['constant', 'variable', 'random', 'game_data'])
+      .describe('Operand source for the variable value'),
+    value: z.number().optional().describe('constant: the value'),
+    variableId: z.number().int().optional().describe('variable: the source variable id'),
+    min: z.number().optional().describe('random: inclusive minimum'),
+    max: z.number().optional().describe('random: inclusive maximum'),
+    dataType: z
+      .number()
+      .int()
+      .optional()
+      .describe(
+        'game_data: 0 item/1 weapon/2 armor count, 3 actor, 4 enemy, 5 char, 6 party, 7 other, 8 last',
+      ),
+    param1: z.number().int().optional().describe('game_data: first sub-parameter (see corescript)'),
+    param2: z
+      .number()
+      .int()
+      .optional()
+      .describe('game_data: second sub-parameter (see corescript)'),
+  })
+  .describe('The right-hand operand of the Control Variables command');
+
+/** Map the flat variable-operand input to the discriminated {@link VariableOperand}. */
+function toVariableOperand(o: Record<string, unknown>): VariableOperand {
+  switch (o.type) {
+    case 'variable':
+      return { type: 'variable', variableId: o.variableId as number };
+    case 'random':
+      return { type: 'random', min: (o.min as number) ?? 0, max: (o.max as number) ?? 0 };
+    case 'game_data':
+      return {
+        type: 'game_data',
+        dataType: (o.dataType as number) ?? 0,
+        param1: o.param1 as number | undefined,
+        param2: o.param2 as number | undefined,
+      };
+    default:
+      return { type: 'constant', value: (o.value as number) ?? 0 };
   }
 }
 
@@ -287,6 +360,136 @@ export const eventCommandToolDefinitions: ToolDefinition[] = [
         default:
           throw new Error(`Unknown flow command kind: ${args.kind}`);
       }
+    },
+  },
+  {
+    name: 'build_control_switch',
+    description:
+      'Build a Control Switches (121) or Control Self Switch (123) event command for insertion via insert_event_commands. scope "switch": set a switch (or the inclusive switchId..endId range) on/off. scope "self_switch": set the current event\'s self switch A–D. Read-only: returns { command }.',
+    inputSchema: {
+      scope: z
+        .enum(['switch', 'self_switch'])
+        .describe('"switch" (global, by id/range) or "self_switch" (this event, A–D)'),
+      switchId: z.number().int().optional().describe('switch: the switch id (range start)'),
+      endId: z
+        .number()
+        .int()
+        .optional()
+        .describe('switch: inclusive range end (default = switchId, a single switch)'),
+      name: z.enum(['A', 'B', 'C', 'D']).optional().describe('self_switch: which self switch'),
+      value: z.enum(['on', 'off']).optional().describe('Set on (default) or off'),
+      indent: z.number().int().optional().describe('Indentation level (default 0)'),
+    },
+    handler: async (_ctx, args) => {
+      const indent = args.indent ?? 0;
+      const value = args.value as 'on' | 'off' | undefined;
+      if (args.scope === 'self_switch') {
+        if (typeof args.name !== 'string') throw new Error('self_switch requires `name` (A–D)');
+        return { command: controlSelfSwitch(args.name as 'A' | 'B' | 'C' | 'D', value, indent) };
+      }
+      if (typeof args.switchId !== 'number') throw new Error('switch scope requires `switchId`');
+      return {
+        command: controlSwitches(args.switchId, args.endId ?? args.switchId, value, indent),
+      };
+    },
+  },
+  {
+    name: 'build_control_variable',
+    description:
+      'Build a Control Variables (122) event command for insertion via insert_event_commands. Applies operation (set/add/sub/mul/div/mod) to a variable (or the inclusive variableId..endId range) using an operand: constant, another variable, a random range, or game_data (item/actor/party/… readouts). Read-only: returns { command }.',
+    inputSchema: {
+      variableId: z.number().int().describe('The target variable id (range start)'),
+      endId: z
+        .number()
+        .int()
+        .optional()
+        .describe('Inclusive range end (default = variableId, a single variable)'),
+      operation: z
+        .enum(['set', 'add', 'sub', 'mul', 'div', 'mod'])
+        .optional()
+        .describe('Arithmetic applied to the target (default set)'),
+      operand: variableOperandShape,
+      indent: z.number().int().optional().describe('Indentation level (default 0)'),
+    },
+    handler: async (_ctx, args) => {
+      const operand = toVariableOperand(args.operand as Record<string, unknown>);
+      return {
+        command: controlVariables(
+          args.variableId as number,
+          (args.operation ?? 'set') as VariableOperation,
+          operand,
+          { endId: args.endId, indent: args.indent },
+        ),
+      };
+    },
+  },
+  {
+    name: 'build_change_gold',
+    description:
+      'Build a Change Gold (125) event command for insertion via insert_event_commands — increase or decrease party gold by a constant or variable amount. Read-only: returns { command }.',
+    inputSchema: {
+      operation: z.enum(['increase', 'decrease']).describe('Gain or lose gold'),
+      operand: gainOperandShape,
+      indent: z.number().int().optional().describe('Indentation level (default 0)'),
+    },
+    handler: async (_ctx, args) => {
+      const operand = toGainOperand(args.operand as Record<string, unknown>);
+      return { command: changeGold(args.operation as GainOperation, operand, args.indent ?? 0) };
+    },
+  },
+  {
+    name: 'build_change_items',
+    description:
+      'Build a Change Items (126), Change Weapons (127), or Change Armors (128) event command for insertion via insert_event_commands — gain/lose an item/weapon/armor by a constant or variable amount. includeEquip (weapon/armor only) also counts equipped copies when removing. Read-only: returns { command }.',
+    inputSchema: {
+      kind: z.enum(['item', 'weapon', 'armor']).describe('Which inventory to change'),
+      id: z.number().int().describe('The item/weapon/armor id'),
+      operation: z.enum(['increase', 'decrease']).describe('Gain or lose'),
+      operand: gainOperandShape,
+      includeEquip: z
+        .boolean()
+        .optional()
+        .describe('weapon/armor: also count equipped copies (default false)'),
+      indent: z.number().int().optional().describe('Indentation level (default 0)'),
+    },
+    handler: async (_ctx, args) => {
+      const operand = toGainOperand(args.operand as Record<string, unknown>);
+      const operation = args.operation as GainOperation;
+      const id = args.id as number;
+      const indent = args.indent ?? 0;
+      const includeEquip = args.includeEquip ?? false;
+      switch (args.kind) {
+        case 'weapon':
+          return { command: changeWeapons(id, operation, operand, includeEquip, indent) };
+        case 'armor':
+          return { command: changeArmors(id, operation, operand, includeEquip, indent) };
+        default:
+          return { command: changeItems(id, operation, operand, indent) };
+      }
+    },
+  },
+  {
+    name: 'build_change_party_member',
+    description:
+      'Build a Change Party Member (129) event command for insertion via insert_event_commands — add or remove an actor from the party. initialize (add only) resets the actor to their initial state. Read-only: returns { command }.',
+    inputSchema: {
+      actorId: z.number().int().describe('The actor id'),
+      operation: z.enum(['add', 'remove']).describe('Add to or remove from the party'),
+      initialize: z
+        .boolean()
+        .optional()
+        .describe('add only: reset the actor to their initial state (default false)'),
+      indent: z.number().int().optional().describe('Indentation level (default 0)'),
+    },
+    handler: async (_ctx, args) => {
+      return {
+        command: changePartyMember(
+          args.actorId as number,
+          args.operation as 'add' | 'remove',
+          args.initialize ?? false,
+          args.indent ?? 0,
+        ),
+      };
     },
   },
   {
