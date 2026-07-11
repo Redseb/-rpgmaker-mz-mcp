@@ -26,10 +26,18 @@ export interface Item {
   description: string;
   iconIndex: number;
   itypeId: number;
+  scope: number;
+  occasion: number;
+  speed: number;
+  successRate: number;
+  repeats: number;
+  tpGain: number;
+  hitType: number;
+  animationId: number;
   price: number;
   consumable: boolean;
+  damage: Damage;
   effects: Effect[];
-  traits: Trait[];
   note: string;
 }
 

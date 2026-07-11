@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
-import { SystemData } from '../utils/types.js';
+import { SystemData, Terms, Actor } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 
 /**
@@ -83,12 +83,21 @@ export async function getPartyMembers(projectPath: string): Promise<number[]> {
 }
 
 /**
- * Update party members
+ * Update the starting party (the actor ids the game begins with). Validates every
+ * id references an existing actor (throws otherwise — mirrors create_map's parent
+ * check) so a bad party can't silently break new-game setup.
  */
 export async function updatePartyMembers(
   projectPath: string,
   partyMembers: number[],
 ): Promise<void> {
+  const actors = await readJsonFile<(Actor | null)[]>(getDataPath(projectPath, 'Actors.json'));
+  for (const id of partyMembers) {
+    if (!actors[id]) {
+      throw new Error(`Party member actor id ${id} does not exist in Actors.json`);
+    }
+  }
+
   const system = await getSystem(projectPath);
   system.partyMembers = partyMembers;
 
@@ -148,41 +157,82 @@ export async function updateGameTitle(projectPath: string, title: string): Promi
 }
 
 /**
- * Get all terms (vocabulary)
+ * Get all terms (vocabulary): the `basic`, `commands`, `params` string arrays
+ * and the `messages` string map.
  */
-export async function getTerms(projectPath: string): Promise<any> {
+export async function getTerms(projectPath: string): Promise<Terms> {
   const system = await getSystem(projectPath);
   return system.terms;
 }
 
-/**
- * Update a basic term
- */
-export async function updateBasicTerm(
-  projectPath: string,
-  index: number,
-  value: string,
-): Promise<void> {
-  const system = await getSystem(projectPath);
-  system.terms.basic[index] = value;
+/** The four vocabulary categories in System.json's `terms`. */
+export type TermCategory = 'basic' | 'commands' | 'params' | 'messages';
 
-  const systemPath = getDataPath(projectPath, 'System.json');
-  await commitChange(systemPath, system);
+/**
+ * Set one vocabulary term. For `basic`/`commands`/`params` the `key` is a numeric
+ * index (passed as a string); for `messages` it's a string message key. Throws on
+ * an out-of-range index (so a typo can't silently grow a sparse array).
+ */
+export async function setTerm(
+  projectPath: string,
+  category: TermCategory,
+  key: string,
+  value: string,
+): Promise<Terms> {
+  const system = await getSystem(projectPath);
+  const terms = system.terms;
+
+  if (category === 'messages') {
+    terms.messages[key] = value;
+  } else {
+    const index = Number(key);
+    const arr = terms[category];
+    if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+      throw new Error(`terms.${category} index ${key} is out of range (0..${arr.length - 1})`);
+    }
+    arr[index] = value;
+  }
+
+  await commitChange(getDataPath(projectPath, 'System.json'), system);
+  return terms;
+}
+
+/** The System.json "type name" arrays other data references by index. */
+export type TypeCategory = 'elements' | 'skillTypes' | 'weaponTypes' | 'armorTypes' | 'equipTypes';
+
+/** Get one type-name array (elements, skillTypes, weaponTypes, armorTypes, equipTypes). */
+export async function getTypes(projectPath: string, category: TypeCategory): Promise<string[]> {
+  const system = await getSystem(projectPath);
+  return system[category];
 }
 
 /**
- * Update a command term
+ * Rename one entry in a type-name array. `index` 0 is the conventional empty slot
+ * (kept as `""` by the editor). Throws on an out-of-range index rather than
+ * growing the array with holes.
  */
-export async function updateCommandTerm(
+export async function setTypeName(
   projectPath: string,
+  category: TypeCategory,
   index: number,
-  value: string,
-): Promise<void> {
+  name: string,
+): Promise<string[]> {
   const system = await getSystem(projectPath);
-  system.terms.commands[index] = value;
+  const arr = system[category];
+  if (!Number.isInteger(index) || index < 0 || index >= arr.length) {
+    throw new Error(`${category} index ${index} is out of range (0..${arr.length - 1})`);
+  }
+  arr[index] = name;
 
-  const systemPath = getDataPath(projectPath, 'System.json');
-  await commitChange(systemPath, system);
+  await commitChange(getDataPath(projectPath, 'System.json'), system);
+  return arr;
+}
+
+/** Set the currency unit shown next to gold amounts (e.g. "G"). */
+export async function setCurrencyUnit(projectPath: string, unit: string): Promise<void> {
+  const system = await getSystem(projectPath);
+  system.currencyUnit = unit;
+  await commitChange(getDataPath(projectPath, 'System.json'), system);
 }
 
 export const systemToolDefinitions: ToolDefinition[] = [
@@ -247,6 +297,12 @@ export const systemToolDefinitions: ToolDefinition[] = [
     },
   },
   {
+    name: 'get_starting_position',
+    description: 'Get the game starting position ({ mapId, x, y })',
+    inputSchema: {},
+    handler: (ctx) => getStartingPosition(ctx.projectPath),
+  },
+  {
     name: 'update_starting_position',
     mutates: true,
     description: 'Update the game starting position',
@@ -258,6 +314,85 @@ export const systemToolDefinitions: ToolDefinition[] = [
     handler: async (ctx, args) => {
       await updateStartingPosition(ctx.projectPath, args.mapId, args.x, args.y);
       return { success: true };
+    },
+  },
+  {
+    name: 'get_party',
+    description: 'Get the starting party — the actor ids the game begins with.',
+    inputSchema: {},
+    handler: (ctx) => getPartyMembers(ctx.projectPath),
+  },
+  {
+    name: 'set_party',
+    mutates: true,
+    description:
+      'Set the starting party (the actor ids the game begins with, in order). Every id must reference an existing actor.',
+    inputSchema: {
+      partyMembers: z
+        .array(z.number().int().positive())
+        .describe('Ordered actor ids for the starting party'),
+    },
+    handler: async (ctx, args) => {
+      await updatePartyMembers(ctx.projectPath, args.partyMembers);
+      return { success: true, partyMembers: args.partyMembers };
+    },
+  },
+  {
+    name: 'get_terms',
+    description:
+      'Get the game vocabulary/terms: the `basic`, `commands`, `params` string arrays and the `messages` map (menu labels, system messages).',
+    inputSchema: {},
+    handler: (ctx) => getTerms(ctx.projectPath),
+  },
+  {
+    name: 'set_term',
+    mutates: true,
+    description:
+      "Set one vocabulary term. For category 'basic'/'commands'/'params' the key is a numeric index (as a string); for 'messages' it's a message key (e.g. 'actorDamage'). Returns the updated terms.",
+    inputSchema: {
+      category: z
+        .enum(['basic', 'commands', 'params', 'messages'])
+        .describe('Which term group to edit'),
+      key: z.string().describe('Index (for basic/commands/params) or message key (for messages)'),
+      value: z.string().describe('The new term text'),
+    },
+    handler: (ctx, args) =>
+      setTerm(ctx.projectPath, args.category as TermCategory, args.key, args.value),
+  },
+  {
+    name: 'get_types',
+    description:
+      'Get one System.json type-name array — the named lists other data references by index: elements, skillTypes, weaponTypes, armorTypes, or equipTypes.',
+    inputSchema: {
+      category: z
+        .enum(['elements', 'skillTypes', 'weaponTypes', 'armorTypes', 'equipTypes'])
+        .describe('Which type-name array to read'),
+    },
+    handler: (ctx, args) => getTypes(ctx.projectPath, args.category as TypeCategory),
+  },
+  {
+    name: 'set_type_name',
+    mutates: true,
+    description:
+      'Rename one entry in a System.json type-name array (elements/skillTypes/weaponTypes/armorTypes/equipTypes). Index 0 is the conventional empty slot. Returns the updated array.',
+    inputSchema: {
+      category: z
+        .enum(['elements', 'skillTypes', 'weaponTypes', 'armorTypes', 'equipTypes'])
+        .describe('Which type-name array to edit'),
+      index: z.number().int().nonnegative().describe('Index within the array (0 = empty slot)'),
+      name: z.string().describe('The new type name'),
+    },
+    handler: (ctx, args) =>
+      setTypeName(ctx.projectPath, args.category as TypeCategory, args.index, args.name),
+  },
+  {
+    name: 'set_currency_unit',
+    mutates: true,
+    description: 'Set the currency unit shown next to gold amounts (e.g. "G", "Gold").',
+    inputSchema: { unit: z.string().describe('The currency unit string') },
+    handler: async (ctx, args) => {
+      await setCurrencyUnit(ctx.projectPath, args.unit);
+      return { success: true, currencyUnit: args.unit };
     },
   },
 ];
