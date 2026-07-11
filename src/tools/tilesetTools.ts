@@ -1,22 +1,33 @@
 import { z } from 'zod';
 import { ToolDefinition } from '../registry.js';
 import { getDataPath, readJsonFile } from '../utils/fileHandler.js';
+import { commitChange } from '../utils/commit.js';
 import { MapData, Tileset } from '../utils/types.js';
 import { getMap, tileIndex } from './mapTools.js';
 import {
   Direction,
+  FlagUpdate,
   decodeFlags,
+  encodeFlags,
   layeredPassability,
   layeredTerrainTag,
 } from '../tiles/tileFlags.js';
-import { decodeTile } from '../tiles/tileCodec.js';
+import {
+  AUTOTILE_SLOTS_PER_KIND,
+  decodeTile,
+  getAutotileKind,
+  isAutotile,
+  makeAutotileId,
+} from '../tiles/tileCodec.js';
 
 /**
- * Read-only tools over a tileset's `flags[]` array (Phase 3e) — the bit-packed
- * per-tile-id metadata the editor sets and the engine reads for movement.
- * `get_tile_flags` decodes one tile's flag word; `check_passability` reproduces
- * the engine's *layered* passage logic for a real map cell (the stacked tiles
- * decide, upper layer first). Independent of the paint pipeline — pure reads.
+ * Tools over a tileset's `flags[]` array (Phase 3e read side + passability
+ * editing) — the bit-packed per-tile-id metadata the editor sets and the engine
+ * reads for movement. `get_tile_flags` decodes one tile's flag word;
+ * `check_passability` reproduces the engine's *layered* passage logic for a real
+ * map cell (the stacked tiles decide, upper layer first); `set_tile_flags`
+ * writes the passability/terrain/behaviour flags back. Independent of the paint
+ * pipeline.
  */
 
 /** Load one tileset from the project's data/Tilesets.json (1-indexed, slot 0 null). */
@@ -29,6 +40,34 @@ export async function getTileset(projectPath: string, tilesetId: number): Promis
     throw new Error(`Tileset ${tilesetId} not found`);
   }
   return tileset;
+}
+
+/** Collect the caller's supplied flag fields into a FlagUpdate (omitting untouched ones). */
+function flagUpdateFromArgs(args: Record<string, unknown>): FlagUpdate {
+  const update: FlagUpdate = {};
+  if (args.passage !== undefined) update.passage = args.passage as Partial<FlagUpdate['passage']>;
+  if (args.star !== undefined) update.star = args.star as boolean;
+  if (args.ladder !== undefined) update.ladder = args.ladder as boolean;
+  if (args.bush !== undefined) update.bush = args.bush as boolean;
+  if (args.counter !== undefined) update.counter = args.counter as boolean;
+  if (args.damage !== undefined) update.damage = args.damage as boolean;
+  if (args.terrainTag !== undefined) update.terrainTag = args.terrainTag as number;
+  return update;
+}
+
+/**
+ * The tile ids a `set_tile_flags` write should touch. For a flat tile it's just
+ * the tile itself; for an autotile it's every shape slot of the kind (so painting
+ * any border shape keeps the same passability) unless the caller opts out.
+ */
+function flagTargetIds(tileId: number, applyToKind: boolean): number[] {
+  if (applyToKind && isAutotile(tileId)) {
+    const kind = getAutotileKind(tileId);
+    return Array.from({ length: AUTOTILE_SLOTS_PER_KIND }, (_, shape) =>
+      makeAutotileId(kind, shape),
+    );
+  }
+  return [tileId];
 }
 
 /** The four stacked tile ids at a cell, upper layer first (z 3,2,1,0) — the engine's `layeredTiles` order. */
@@ -99,6 +138,69 @@ export const tilesetToolDefinitions: ToolDefinition[] = [
               passableInDirection: passable[args.direction as Direction],
             }
           : {}),
+      };
+    },
+  },
+  {
+    name: 'set_tile_flags',
+    mutates: true,
+    description:
+      "Edit a tile's passability/terrain/behaviour flags in a tileset's flags[] array (the write side of get_tile_flags). Only the fields you pass change — everything else on the tile is preserved (a non-destructive merge onto the current flag word). `passage` is walkability (down/left/right/up, true = a character can walk off that way). Also settable: star ([*] overlay), ladder, bush, counter, damage (damage floor), and terrainTag (0–7). For an autotile id (A1–A4) the change is applied to all 48 shape slots of its kind by default (set applyToAutotileKind:false to touch only the exact id) so painting any border shape keeps the same passability. Writes data/Tilesets.json through the commit choke point (dry-run/diff). Returns { tilesetId, tileId, appliedTileCount, before, after }.",
+    inputSchema: {
+      tilesetId: z.number().int().positive().describe('Tileset id (from Tilesets.json / the map)'),
+      tileId: z.number().int().nonnegative().describe('The raw tile id whose flags to edit'),
+      passage: z
+        .object({
+          down: z.boolean().optional(),
+          left: z.boolean().optional(),
+          right: z.boolean().optional(),
+          up: z.boolean().optional(),
+        })
+        .optional()
+        .describe('Walkability per direction (true = walkable). Only the given directions change.'),
+      star: z.boolean().optional().describe('[*] overlay: tile drawn above the character.'),
+      ladder: z.boolean().optional(),
+      bush: z.boolean().optional(),
+      counter: z.boolean().optional(),
+      damage: z.boolean().optional().describe('Damage floor (standing on it hurts).'),
+      terrainTag: z.number().int().min(0).max(7).optional().describe('Terrain tag 0–7 (0 = none).'),
+      applyToAutotileKind: z
+        .boolean()
+        .optional()
+        .describe(
+          'When the tile is an autotile (A1–A4), apply the change to all 48 shape slots of its kind (default true). Ignored for flat tiles.',
+        ),
+    },
+    handler: async (ctx, args) => {
+      const update = flagUpdateFromArgs(args);
+      if (Object.keys(update).length === 0) {
+        throw new Error(
+          'No flag fields to update — pass at least one of passage/star/ladder/bush/counter/damage/terrainTag',
+        );
+      }
+
+      const path = getDataPath(ctx.projectPath, 'Tilesets.json');
+      const tilesets = await readJsonFile<(Tileset | null)[]>(path);
+      const tileset = tilesets[args.tilesetId];
+      if (!tileset) {
+        throw new Error(`Tileset ${args.tilesetId} not found`);
+      }
+
+      const targetIds = flagTargetIds(args.tileId, args.applyToAutotileKind ?? true);
+      const before = decodeFlags(tileset.flags[args.tileId] ?? 0);
+      for (const id of targetIds) {
+        tileset.flags[id] = encodeFlags(tileset.flags[id] ?? 0, update);
+      }
+      const after = decodeFlags(tileset.flags[args.tileId] ?? 0);
+
+      await commitChange(path, tilesets);
+      return {
+        tilesetId: args.tilesetId,
+        tilesetName: tileset.name,
+        tileId: args.tileId,
+        appliedTileCount: targetIds.length,
+        before,
+        after,
       };
     },
   },

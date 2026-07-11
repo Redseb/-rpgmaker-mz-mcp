@@ -4,11 +4,15 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import {
   decodeFlags,
+  encodeFlags,
   checkPassage,
   layeredPassability,
   layeredTerrainTag,
   PASSAGE_BITS,
 } from '../src/tiles/tileFlags.js';
+import { makeAutotileId } from '../src/tiles/tileCodec.js';
+import { readJsonFile } from '../src/utils/fileHandler.js';
+import type { Tileset } from '../src/utils/types.js';
 import { blankMapData } from '../src/tools/mapTools.js';
 import { tilesetToolDefinitions } from '../src/tools/tilesetTools.js';
 
@@ -56,6 +60,65 @@ describe('decodeFlags', () => {
     expect(decodeFlags(0x7000).terrainTag).toBe(7);
     // low bits don't leak into the tag
     expect(decodeFlags(0x3000 | 0x0f).terrainTag).toBe(3);
+  });
+});
+
+// --- encode (write side, inverse of decodeFlags) ----------------------------
+
+describe('encodeFlags', () => {
+  it('is a non-destructive merge — omitted fields keep their bits', () => {
+    const start = 0x20 | 0x3000; // ladder + terrain tag 3
+    // only block the up direction; ladder + tag must survive
+    const out = encodeFlags(start, { passage: { up: false } });
+    expect(decodeFlags(out).ladder).toBe(true);
+    expect(decodeFlags(out).terrainTag).toBe(3);
+    expect(decodeFlags(out).passage.up).toBe(false);
+    expect(decodeFlags(out).passage.down).toBe(true);
+  });
+
+  it('inverts walkability to the engine blocked-bit convention', () => {
+    // walkable:false → passage bit SET (blocked)
+    expect(encodeFlags(0, { passage: { down: false } }) & PASSAGE_BITS.down).toBe(
+      PASSAGE_BITS.down,
+    );
+    // walkable:true clears an already-blocked bit
+    expect(encodeFlags(PASSAGE_BITS.down, { passage: { down: true } }) & PASSAGE_BITS.down).toBe(0);
+  });
+
+  it('sets and clears each behaviour bit', () => {
+    expect(decodeFlags(encodeFlags(0, { star: true })).star).toBe(true);
+    expect(decodeFlags(encodeFlags(0x10, { star: false })).star).toBe(false);
+    expect(decodeFlags(encodeFlags(0, { ladder: true, bush: true, counter: true, damage: true })));
+    const all = encodeFlags(0, { ladder: true, bush: true, counter: true, damage: true });
+    const dec = decodeFlags(all);
+    expect([dec.ladder, dec.bush, dec.counter, dec.damage]).toEqual([true, true, true, true]);
+  });
+
+  it('replaces the terrain tag without disturbing lower bits', () => {
+    const start = 0x1000 | 0x20; // tag 1 + ladder
+    const out = encodeFlags(start, { terrainTag: 5 });
+    expect(decodeFlags(out).terrainTag).toBe(5);
+    expect(decodeFlags(out).ladder).toBe(true);
+  });
+
+  it('round-trips through decodeFlags', () => {
+    const out = encodeFlags(0, {
+      passage: { down: false, left: true, right: false, up: true },
+      star: true,
+      damage: true,
+      terrainTag: 4,
+    });
+    expect(decodeFlags(out)).toMatchObject({
+      passage: { down: false, left: true, right: false, up: true },
+      star: true,
+      damage: true,
+      terrainTag: 4,
+    });
+  });
+
+  it('rejects an out-of-range terrain tag', () => {
+    expect(() => encodeFlags(0, { terrainTag: 8 })).toThrow(/terrainTag/);
+    expect(() => encodeFlags(0, { terrainTag: -1 })).toThrow(/terrainTag/);
   });
 });
 
@@ -133,6 +196,12 @@ async function scaffold(): Promise<string> {
 
 const getTileFlags = tilesetToolDefinitions.find((t) => t.name === 'get_tile_flags')!;
 const checkPassability = tilesetToolDefinitions.find((t) => t.name === 'check_passability')!;
+const setTileFlags = tilesetToolDefinitions.find((t) => t.name === 'set_tile_flags')!;
+
+async function loadFlags(dir: string, id: number): Promise<number> {
+  const tilesets = await readJsonFile<(Tileset | null)[]>(join(dir, 'data', 'Tilesets.json'));
+  return tilesets[1]!.flags[id];
+}
 
 describe('tileset flag tools (integration)', () => {
   let dir: string;
@@ -190,5 +259,58 @@ describe('tileset flag tools (integration)', () => {
     await expect(
       checkPassability.handler({ projectPath: dir }, { mapId: 1, x: 99, y: 0 }),
     ).rejects.toThrow(/out of map bounds/);
+  });
+
+  it('set_tile_flags edits a flat tile and preserves untouched flags', async () => {
+    // tile 200 starts as ladder + terrain tag 3; block it up-only, keep the rest.
+    const res = (await setTileFlags.handler(
+      { projectPath: dir },
+      { tilesetId: 1, tileId: 200, passage: { up: false } },
+    )) as { appliedTileCount: number; after: ReturnType<typeof decodeFlags> };
+    expect(res.appliedTileCount).toBe(1);
+    expect(res.after.passage.up).toBe(false);
+    expect(res.after.ladder).toBe(true);
+    expect(res.after.terrainTag).toBe(3);
+
+    const written = decodeFlags(await loadFlags(dir, 200));
+    expect(written.passage.up).toBe(false);
+    expect(written.ladder).toBe(true);
+    expect(written.terrainTag).toBe(3);
+  });
+
+  it('set_tile_flags applies to a whole autotile kind by default', async () => {
+    const base = makeAutotileId(16, 0); // an A2 grass-ish kind, shape 0
+    await setTileFlags.handler(
+      { projectPath: dir },
+      { tilesetId: 1, tileId: base, damage: true, terrainTag: 2 },
+    );
+    // every one of the kind's 48 shape slots should carry the change
+    for (const shape of [0, 1, 25, 47]) {
+      const f = decodeFlags(await loadFlags(dir, makeAutotileId(16, shape)));
+      expect(f.damage).toBe(true);
+      expect(f.terrainTag).toBe(2);
+    }
+  });
+
+  it('set_tile_flags touches only the exact id when applyToAutotileKind is false', async () => {
+    const base = makeAutotileId(20, 0);
+    await setTileFlags.handler(
+      { projectPath: dir },
+      { tilesetId: 1, tileId: base, bush: true, applyToAutotileKind: false },
+    );
+    expect(decodeFlags(await loadFlags(dir, makeAutotileId(20, 0))).bush).toBe(true);
+    expect(decodeFlags(await loadFlags(dir, makeAutotileId(20, 1))).bush).toBe(false);
+  });
+
+  it('set_tile_flags throws when given no flag fields', async () => {
+    await expect(
+      setTileFlags.handler({ projectPath: dir }, { tilesetId: 1, tileId: 100 }),
+    ).rejects.toThrow(/No flag fields/);
+  });
+
+  it('set_tile_flags throws on an unknown tileset', async () => {
+    await expect(
+      setTileFlags.handler({ projectPath: dir }, { tilesetId: 9, tileId: 100, star: true }),
+    ).rejects.toThrow(/Tileset 9 not found/);
   });
 });

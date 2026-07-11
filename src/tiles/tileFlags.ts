@@ -118,3 +118,58 @@ export function layeredTerrainTag(stackFlags: number[]): number {
   }
   return 0;
 }
+
+// --- encode (the write side, inverse of decodeFlags) ------------------------
+
+const TERRAIN_TAG_SHIFT = 12;
+const TERRAIN_TAG_MASK = 0x7 << TERRAIN_TAG_SHIFT;
+
+/** A partial update to a tile's curated flags — only the named fields change. */
+export interface FlagUpdate {
+  /** Walkability per direction (`true` = walkable). Only the given directions change. */
+  passage?: Partial<Passability>;
+  star?: boolean;
+  ladder?: boolean;
+  bush?: boolean;
+  counter?: boolean;
+  damage?: boolean;
+  /** Terrain tag 0–7. */
+  terrainTag?: number;
+}
+
+/** Set or clear a single bit in a word. */
+function withBit(word: number, bit: number, on: boolean): number {
+  return on ? word | bit : word & ~bit;
+}
+
+/**
+ * Merge a partial flag update onto an existing flag word — the inverse of
+ * `decodeFlags`, but *non-destructive*: only the bits named in `update` change,
+ * so any reserved/unknown bits and any field the caller omits are preserved.
+ * `passage` is expressed as walkability (`true` = walkable that way) and inverted
+ * to the engine's blocked-bit convention (a SET passage bit means *blocked*).
+ * Throws on a terrain tag outside 0–7.
+ */
+export function encodeFlags(current: number, update: FlagUpdate): number {
+  let word = current;
+  if (update.passage) {
+    for (const dir of Object.keys(PASSAGE_BITS) as Direction[]) {
+      const walkable = update.passage[dir];
+      if (walkable !== undefined) {
+        word = withBit(word, PASSAGE_BITS[dir], !walkable); // SET bit = blocked
+      }
+    }
+  }
+  if (update.star !== undefined) word = withBit(word, STAR_BIT, update.star);
+  if (update.ladder !== undefined) word = withBit(word, LADDER_BIT, update.ladder);
+  if (update.bush !== undefined) word = withBit(word, BUSH_BIT, update.bush);
+  if (update.counter !== undefined) word = withBit(word, COUNTER_BIT, update.counter);
+  if (update.damage !== undefined) word = withBit(word, DAMAGE_BIT, update.damage);
+  if (update.terrainTag !== undefined) {
+    if (!Number.isInteger(update.terrainTag) || update.terrainTag < 0 || update.terrainTag > 7) {
+      throw new Error(`terrainTag must be an integer 0–7 (got ${update.terrainTag})`);
+    }
+    word = (word & ~TERRAIN_TAG_MASK) | (update.terrainTag << TERRAIN_TAG_SHIFT);
+  }
+  return word;
+}
