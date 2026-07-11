@@ -15,6 +15,7 @@ import { paintToolDefinitions } from './paintTools.js';
 import { objectToolDefinitions } from './objectTools.js';
 import { tilesetToolDefinitions } from './tilesetTools.js';
 import { systemToolDefinitions } from './systemTools.js';
+import { assetToolDefinitions } from './assetTools.js';
 import { listToolDefinitions } from './listTools.js';
 import { validationToolDefinitions } from './validationTools.js';
 
@@ -40,6 +41,7 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...objectToolDefinitions,
   ...tilesetToolDefinitions,
   ...systemToolDefinitions,
+  ...assetToolDefinitions,
   ...listToolDefinitions,
   ...validationToolDefinitions,
 ];
