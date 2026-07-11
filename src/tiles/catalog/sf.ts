@@ -1,6 +1,6 @@
 /**
  * Semantic tile catalog for the default RPG Maker MZ **SF (Sci-Fi)** tileset
- * sheets (SF_Outside_A3, SF_Outside_A4, SF_Outside_A5, SF_Outside_B, SF_Outside_C, SF_Inside_A4, SF_Inside_B, SF_Inside_C), for Phase 4 (default-tileset catalogs). Names are RPG
+ * sheets (SF_Outside_A3, SF_Outside_A4, SF_Outside_A5, SF_Outside_B, SF_Outside_C, SF_Inside_A4, SF_Inside_B, SF_Inside_C). Names are RPG
  * Maker's own official English tile labels, taken verbatim from the tileset
  * image .txt sidecars that ship in the new-project template
  * (RPGMZ.app .../newdata/img/tilesets/*.txt) — so authoritative, not guessed.

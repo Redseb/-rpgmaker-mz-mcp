@@ -9,11 +9,11 @@ import { Passability, layeredPassability, layeredTerrainTag } from '../tiles/til
 import { isAutotile } from '../tiles/tileCodec.js';
 
 /**
- * Smart multi-tile object placement (Phase 4). A B/C "object" (a house, tree,
+ * Smart multi-tile object placement. A B/C "object" (a house, tree,
  * fountain, …) is a rectangular block of *flat* sheet tiles that occupies more
  * than one cell. `place_object` stamps such a block onto a map — by default the
  * upper tile layer (2), so the object draws over the ground — and, using the
- * Phase 3e tileset flags, reports the placement's passability: which ground it
+ * tileset flags, reports the placement's passability: which ground it
  * covered was walkable, and which footprint cells the object turns into a solid
  * (impassable) obstacle. Warn-by-default, like the rest of the validation layer:
  * it never refuses a placement, it tells you what the placement did.

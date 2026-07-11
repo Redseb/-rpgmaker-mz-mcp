@@ -1,6 +1,6 @@
 /**
  * Semantic tile catalog for the default RPG Maker MZ **Outside** tileset
- * sheets (Outside_A1, Outside_A2, Outside_A3, Outside_A4, Outside_A5, Outside_B, Outside_C), for Phase 4 (default-tileset catalogs). Names are RPG
+ * sheets (Outside_A1, Outside_A2, Outside_A3, Outside_A4, Outside_A5, Outside_B, Outside_C). Names are RPG
  * Maker's own official English tile labels, taken verbatim from the tileset
  * image .txt sidecars that ship in the new-project template
  * (RPGMZ.app .../newdata/img/tilesets/*.txt) — so authoritative, not guessed.

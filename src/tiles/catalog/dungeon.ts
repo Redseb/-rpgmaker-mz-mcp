@@ -1,6 +1,6 @@
 /**
  * Semantic tile catalog for the default RPG Maker MZ **Dungeon** tileset
- * sheets (Dungeon_A1, Dungeon_A2, Dungeon_A4, Dungeon_A5, Dungeon_B, Dungeon_C), for Phase 4 (default-tileset catalogs). Names are RPG
+ * sheets (Dungeon_A1, Dungeon_A2, Dungeon_A4, Dungeon_A5, Dungeon_B, Dungeon_C). Names are RPG
  * Maker's own official English tile labels, taken verbatim from the tileset
  * image .txt sidecars that ship in the new-project template
  * (RPGMZ.app .../newdata/img/tilesets/*.txt) — so authoritative, not guessed.

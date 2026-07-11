@@ -1,5 +1,5 @@
 /**
- * Semantic tile catalog resolution (Phase 3c). Turns "what does this tileset
+ * Semantic tile catalog resolution. Turns "what does this tileset
  * contain, by meaning" into concrete tile ids — the layer that lets a caller
  * ask for "Grassland A" instead of the opaque integer 2816. Data comes from
  * {@link OVERWORLD_TILE_NAMES} (RPG Maker's own labels for the default Overworld

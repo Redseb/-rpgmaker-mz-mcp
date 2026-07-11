@@ -3,7 +3,7 @@ name: tileset-catalog
 description: Bootstrap a semantic tile catalog for a custom (non-RTP) RPG Maker MZ tileset by vision. Use when a project's tileset sheets (e.g. Custom_A2.png, an unfamiliar A1–A5/B–E sheet) are NOT covered by the server's built-in catalog, so find_tile/get_tile_catalog return nothing for them and paint commands only have opaque tile ids. Slices each sheet into one labelled sample per autotile kind / flat tile, names them by sight, and writes a versioned, project-scoped catalog file. Not needed for the default Overworld tileset (World_A1/A2/B/C — already cataloged).
 ---
 
-# Tileset catalog bootstrap (Phase 3f)
+# Tileset catalog bootstrap
 
 Give a custom tileset the same "ask for grass, get a paintable tile id" layer the
 built-in Overworld catalog provides — but for sheets the server has never seen.

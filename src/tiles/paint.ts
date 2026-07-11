@@ -1,7 +1,7 @@
 /**
- * Autotile-aware painting core (Phase 3d). Given a single map layer and the cells
+ * Autotile-aware painting core. Given a single map layer and the cells
  * just painted on it, recompute the autotile shapes so borders/corners line up —
- * the glue between the shape calculator (3b) and the map-writing paint tools.
+ * the glue between the shape calculator and the map-writing paint tools.
  *
  * Pure (no I/O): the caller supplies a {@link LayerAccess} over one z-layer of a
  * map's flat `data` array. A painted autotile cell is set to *any* tile id of the

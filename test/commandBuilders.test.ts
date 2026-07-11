@@ -181,7 +181,7 @@ describe('flow commands', () => {
 });
 
 /**
- * Game-state builders (Phase 5e-2). Param encodings verified against the corescript
+ * Game-state builders. Param encodings verified against the corescript
  * command121/122/123/125/126/127/128/129 handlers (rmmz_objects.js v1.9.0), with the
  * annotated shapes cross-checked against real editor output (TutorialProject).
  */
@@ -250,7 +250,7 @@ describe('game-state builders (byte-exact)', () => {
 });
 
 /**
- * Presentation & transition builders (Phase 5e-3). Param encodings verified against
+ * Presentation & transition builders. Param encodings verified against
  * the corescript command201/212/213/221–225/231/235/241–250 handlers (rmmz_objects.js
  * v1.9.0); shapes cross-checked against real editor output where present
  * (201 [0,2,16,0,0,0]; 213 [0,4,false]; 224 [[255,255,255,170],60,true]; 249/250 audio).
@@ -330,7 +330,7 @@ describe('presentation builders (byte-exact)', () => {
 });
 
 /**
- * Scene builders (Phase 5e-4). Param encodings verified against the corescript
+ * Scene builders. Param encodings verified against the corescript
  * command301/302/303/311–316 handlers (rmmz_objects.js v1.9.0) + real editor output
  * (301 [0,1,true,false]; 302 [0,7,0,0,false] + 605 [0,10,0,0]; 311 [0,0,0,0,9999,false];
  * 312 [0,0,0,0,9999]; 314 [0,0]; 315 [0,0,0,0,400,false]).

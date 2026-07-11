@@ -1,6 +1,6 @@
 /**
  * Semantic tile catalog for the default RPG Maker MZ **Inside** tileset
- * sheets (Inside_A1, Inside_A2, Inside_A4, Inside_A5, Inside_B, Inside_C), for Phase 4 (default-tileset catalogs). Names are RPG
+ * sheets (Inside_A1, Inside_A2, Inside_A4, Inside_A5, Inside_B, Inside_C). Names are RPG
  * Maker's own official English tile labels, taken verbatim from the tileset
  * image .txt sidecars that ship in the new-project template
  * (RPGMZ.app .../newdata/img/tilesets/*.txt) — so authoritative, not guessed.

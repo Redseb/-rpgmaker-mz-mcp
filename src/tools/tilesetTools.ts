@@ -21,7 +21,7 @@ import {
 } from '../tiles/tileCodec.js';
 
 /**
- * Tools over a tileset's `flags[]` array (Phase 3e read side + passability
+ * Tools over a tileset's `flags[]` array (read side + passability
  * editing) — the bit-packed per-tile-id metadata the editor sets and the engine
  * reads for movement. `get_tile_flags` decodes one tile's flag word;
  * `check_passability` reproduces the engine's *layered* passage logic for a real

@@ -161,7 +161,7 @@ describe('default tilesets (Outside / Inside / Dungeon / SF)', () => {
   });
 });
 
-describe('project-catalog overlay (Phase 4)', () => {
+describe('project-catalog overlay', () => {
   // A tileset using one custom autotile sheet the built-in catalog doesn't cover.
   const CUSTOM = ['', 'Custom_A2', '', '', '', '', '', '', ''];
   const overlay = { Custom_A2: ['Emerald Grass', 'Cracked Earth'] };

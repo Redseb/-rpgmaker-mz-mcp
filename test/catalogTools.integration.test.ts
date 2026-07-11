@@ -6,8 +6,8 @@ import { catalogToolDefinitions } from '../src/tools/catalogTools.js';
 import { makeAutotileId } from '../src/tiles/tileCodec.js';
 
 /**
- * Phase 4: the catalog tools load project-scoped catalogs from data/tilecatalog/
- * (written by the 3f vision-bootstrap skill) and resolve their names alongside the
+ * The catalog tools load project-scoped catalogs from data/tilecatalog/
+ * (written by the vision-bootstrap skill) and resolve their names alongside the
  * built-in Overworld catalog. Exercised through the real tool handlers.
  */
 

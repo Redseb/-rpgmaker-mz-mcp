@@ -1,5 +1,5 @@
 /**
- * RPG Maker MZ tile-flag codec (Phase 3e).
+ * RPG Maker MZ tile-flag codec.
  *
  * Every tileset carries a parallel `flags[]` array — one bit-packed word per
  * tile id (index === tile id, length 8192) — that the *editor* sets and the

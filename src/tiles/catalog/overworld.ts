@@ -1,6 +1,6 @@
 /**
  * Semantic tile catalog for the default RPG Maker MZ **Overworld** tileset
- * (sheets World_A1/A2/B/C), for Phase 3c. Names are RPG Maker's own official
+ * (sheets World_A1/A2/B/C). Names are RPG Maker's own official
  * English tile labels, taken verbatim from the tileset image .txt sidecars that
  * ship in the new-project template (RPGMZ.app .../newdata/img/tilesets/*.txt) —
  * so they're authoritative, not guessed. Keyed by sheet **filename**; each array
