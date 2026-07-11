@@ -20,7 +20,7 @@ import { decodeTile } from '../tiles/tileCodec.js';
  */
 
 /** Load one tileset from the project's data/Tilesets.json (1-indexed, slot 0 null). */
-async function getTileset(projectPath: string, tilesetId: number): Promise<Tileset> {
+export async function getTileset(projectPath: string, tilesetId: number): Promise<Tileset> {
   const tilesets = await readJsonFile<(Tileset | null)[]>(
     getDataPath(projectPath, 'Tilesets.json'),
   );
