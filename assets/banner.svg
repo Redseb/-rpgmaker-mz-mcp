@@ -1,0 +1,87 @@
+<svg width="1200" height="280" viewBox="0 0 1200 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RPG Maker MZ MCP Server">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1b3a"/>
+      <stop offset="55%" stop-color="#16213e"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ff9e6d"/>
+      <stop offset="100%" stop-color="#e94560"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="280" rx="18" fill="url(#bg)"/>
+
+  <!-- decorative tileset grid, bottom-right corner -->
+  <g opacity="0.9">
+    <!-- 8 columns x 5 rows of small "tiles" -->
+    <g transform="translate(860,40)">
+      <rect x="0"   y="0"   width="30" height="30" rx="4" fill="#3fa796" opacity="0.85"/>
+      <rect x="34"  y="0"   width="30" height="30" rx="4" fill="#3fa796" opacity="0.55"/>
+      <rect x="68"  y="0"   width="30" height="30" rx="4" fill="#6fb98f" opacity="0.7"/>
+      <rect x="102" y="0"   width="30" height="30" rx="4" fill="#3fa796" opacity="0.4"/>
+      <rect x="136" y="0"   width="30" height="30" rx="4" fill="#e9c46a" opacity="0.55"/>
+      <rect x="170" y="0"   width="30" height="30" rx="4" fill="#e9c46a" opacity="0.3"/>
+      <rect x="204" y="0"   width="30" height="30" rx="4" fill="#3fa796" opacity="0.6"/>
+      <rect x="238" y="0"   width="30" height="30" rx="4" fill="#6fb98f" opacity="0.4"/>
+
+      <rect x="0"   y="34"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.5"/>
+      <rect x="34"  y="34"  width="30" height="30" rx="4" fill="#e94560" opacity="0.75"/>
+      <rect x="68"  y="34"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.85"/>
+      <rect x="102" y="34"  width="30" height="30" rx="4" fill="#6fb98f" opacity="0.55"/>
+      <rect x="136" y="34"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.3"/>
+      <rect x="170" y="34"  width="30" height="30" rx="4" fill="#e9c46a" opacity="0.6"/>
+      <rect x="204" y="34"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.4"/>
+      <rect x="238" y="34"  width="30" height="30" rx="4" fill="#6fb98f" opacity="0.7"/>
+
+      <rect x="0"   y="68"  width="30" height="30" rx="4" fill="#6fb98f" opacity="0.65"/>
+      <rect x="34"  y="68"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.4"/>
+      <rect x="68"  y="68"  width="30" height="30" rx="4" fill="#e9c46a" opacity="0.5"/>
+      <rect x="102" y="68"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.75"/>
+      <rect x="136" y="68"  width="30" height="30" rx="4" fill="#6fb98f" opacity="0.35"/>
+      <rect x="170" y="68"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.55"/>
+      <rect x="204" y="68"  width="30" height="30" rx="4" fill="#e9c46a" opacity="0.4"/>
+      <rect x="238" y="68"  width="30" height="30" rx="4" fill="#3fa796" opacity="0.6"/>
+
+      <rect x="0"   y="102" width="30" height="30" rx="4" fill="#3fa796" opacity="0.3"/>
+      <rect x="34"  y="102" width="30" height="30" rx="4" fill="#6fb98f" opacity="0.55"/>
+      <rect x="68"  y="102" width="30" height="30" rx="4" fill="#3fa796" opacity="0.65"/>
+      <rect x="102" y="102" width="30" height="30" rx="4" fill="#e9c46a" opacity="0.35"/>
+      <rect x="136" y="102" width="30" height="30" rx="4" fill="#3fa796" opacity="0.5"/>
+      <rect x="170" y="102" width="30" height="30" rx="4" fill="#6fb98f" opacity="0.4"/>
+      <rect x="204" y="102" width="30" height="30" rx="4" fill="#3fa796" opacity="0.7"/>
+      <rect x="238" y="102" width="30" height="30" rx="4" fill="#e9c46a" opacity="0.45"/>
+
+      <rect x="0"   y="136" width="30" height="30" rx="4" fill="#6fb98f" opacity="0.4"/>
+      <rect x="34"  y="136" width="30" height="30" rx="4" fill="#3fa796" opacity="0.6"/>
+      <rect x="68"  y="136" width="30" height="30" rx="4" fill="#6fb98f" opacity="0.35"/>
+      <rect x="102" y="136" width="30" height="30" rx="4" fill="#3fa796" opacity="0.55"/>
+      <rect x="136" y="136" width="30" height="30" rx="4" fill="#e9c46a" opacity="0.3"/>
+      <rect x="170" y="136" width="30" height="30" rx="4" fill="#3fa796" opacity="0.5"/>
+      <rect x="204" y="136" width="30" height="30" rx="4" fill="#6fb98f" opacity="0.6"/>
+      <rect x="238" y="136" width="30" height="30" rx="4" fill="#3fa796" opacity="0.4"/>
+    </g>
+  </g>
+
+  <!-- fade so the grid doesn't fight the text -->
+  <rect x="560" y="0" width="640" height="280" fill="#16213e" opacity="0.35"/>
+
+  <rect x="60" y="52" width="8" height="130" rx="4" fill="url(#accent)"/>
+
+  <text x="92" y="112" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="700" fill="#ffffff">RPG Maker MZ MCP Server</text>
+  <text x="92" y="150" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#a8b2d1">Author actors, maps, events, and tiles from natural language</text>
+  <text x="92" y="177" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="19" fill="#a8b2d1">— via the Model Context Protocol.</text>
+
+  <!-- badge-style chips -->
+  <g font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="600">
+    <rect x="92" y="205" width="98" height="30" rx="15" fill="#e94560" opacity="0.9"/>
+    <text x="141" y="225" fill="#ffffff" text-anchor="middle">112 tools</text>
+
+    <rect x="200" y="205" width="112" height="30" rx="15" fill="#0f3460" stroke="#3fa796" stroke-width="1.5"/>
+    <text x="256" y="225" fill="#e8f1f2" text-anchor="middle">stdio MCP</text>
+
+    <rect x="322" y="205" width="128" height="30" rx="15" fill="#0f3460" stroke="#e9c46a" stroke-width="1.5"/>
+    <text x="386" y="225" fill="#e8f1f2" text-anchor="middle">TypeScript</text>
+  </g>
+</svg>

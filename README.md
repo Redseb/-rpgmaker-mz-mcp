@@ -1,10 +1,39 @@
+<div align="center">
+
+<img src="assets/banner.svg" alt="RPG Maker MZ MCP Server" width="100%" />
+
 # RPG Maker MZ MCP Server
 
-A Model Context Protocol (MCP) server for RPG Maker MZ. It lets an AI assistant read and write an RPG Maker MZ project's database and map data directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+[![CI](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3fa796.svg)](#license)
+[![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-3fa796.svg)](package.json)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
+[![MCP](https://img.shields.io/badge/MCP-stdio-e94560.svg)](https://modelcontextprotocol.io/)
 
-The server exposes **112 tools** over stdio. It covers the full stock RPG Maker MZ authoring surface: database CRUD, multi-map management and the map tree, autotile-aware **tile painting**, passability/terrain editing, a library of **event-command builders** (dialogue, flow, game state, transitions, scenes) that emit editor-faithful command sequences, higher-level NPC/event ergonomics, and a project-wide reference linter.
+**112 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+
+</div>
 
 > **Fork notice.** This is a fork of [k4zuki0539/-rpgmaker-mz-mcp](https://github.com/k4zuki0539/-rpgmaker-mz-mcp) (MIT), extended well beyond the original CRUD scaffolding into full vanilla level-design and game-logic authoring. See [Capabilities](#capabilities) for the full picture.
+
+## Contents
+
+- [Capabilities](#capabilities)
+- [How it fits together](#how-it-fits-together)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Available tools](#available-tools)
+- [Input validation](#input-validation)
+- [Event validation (warn-by-default)](#event-validation-warn-by-default)
+- [Reference linting](#reference-linting)
+- [Dry-run preview](#dry-run-preview)
+- [Custom-tileset catalog skill](#custom-tileset-catalog-skill)
+- [Example prompts](#example-prompts)
+- [Development](#development)
+- [Project structure](#project-structure)
+- [Safety and best practices](#safety-and-best-practices)
+- [Limitations](#limitations)
 
 ## Capabilities
 
@@ -17,6 +46,12 @@ The server exposes **112 tools** over stdio. It covers the full stock RPG Maker 
 - **Event & NPC ergonomics** — `create_npc` places a complete talking NPC in one call; `set_event_page` merges a page's graphic + behavior in place.
 - **Asset awareness** — `list_assets` enumerates valid character/face/tileset/audio names so events never reference a missing file.
 - **Correctness layer** — Zod-validated inputs, warn-by-default event validation, a cross-file reference linter (`validate_references`), and a dry-run/diff preview on every write.
+
+## How it fits together
+
+<div align="center">
+<img src="assets/architecture.svg" alt="AI assistant talks to the MCP server over stdio, which reads and writes the RPG Maker MZ project's data files" width="100%" />
+</div>
 
 ## Installation
 
@@ -68,6 +103,9 @@ Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_
 ## Available tools
 
 All 112 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)).
+
+<details>
+<summary><strong>Expand the full tool reference</strong></summary>
 
 ### Actors
 
@@ -176,6 +214,8 @@ Read-only builders that return editor-faithful `EventCommand` sequences; land th
 - `validate_event`, `validate_project` — event-command-shape validation (read-only)
 - `validate_references` — cross-file id-integrity audit (party→actor, transfer→map, effect→state/skill/common-event, drops→item, map-tree cycles, …)
 
+</details>
+
 ## Input validation
 
 Every tool declares its arguments as a [Zod](https://zod.dev) schema. The server (built on the MCP SDK's high-level `McpServer`) validates incoming arguments against that schema **before** a handler runs, so malformed calls are rejected with a clear `Input validation error` naming the offending field instead of writing garbage to disk.
@@ -282,7 +322,7 @@ rpgmaker-mz-mcp/
 
 ## License
 
-MIT
+[MIT](https://opensource.org/licenses/MIT)
 
 ## Resources
 

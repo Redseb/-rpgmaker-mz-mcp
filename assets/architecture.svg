@@ -1,0 +1,64 @@
+<svg width="1000" height="440" viewBox="0 0 1000 440" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Architecture: AI assistant talks over MCP stdio to the server, which reads and writes the RPG Maker MZ project files">
+  <defs>
+    <linearGradient id="card" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a1b3a"/>
+      <stop offset="100%" stop-color="#0f3460"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#a8b2d1"/>
+    </marker>
+  </defs>
+
+  <rect width="1000" height="440" rx="18" fill="url(#card)"/>
+
+  <text x="500" y="42" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" fill="#ffffff" text-anchor="middle">How it fits together</text>
+
+  <!-- Box 1: AI assistant -->
+  <rect x="40" y="90" width="230" height="110" rx="12" fill="#16213e" stroke="#3fa796" stroke-width="1.5"/>
+  <text x="155" y="135" font-family="'Segoe UI', Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">AI Assistant</text>
+  <text x="155" y="158" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">Claude Desktop / any</text>
+  <text x="155" y="176" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">MCP-compatible client</text>
+
+  <!-- arrow 1 -->
+  <line x1="270" y1="145" x2="378" y2="145" stroke="#a8b2d1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="324" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#e9c46a" text-anchor="middle">tool calls</text>
+
+  <!-- Box 2: MCP server -->
+  <rect x="385" y="80" width="230" height="130" rx="12" fill="#16213e" stroke="#e94560" stroke-width="2"/>
+  <text x="500" y="115" font-family="'Segoe UI', Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">MCP Server</text>
+  <text x="500" y="137" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">stdio transport</text>
+  <text x="500" y="157" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">112 Zod-validated tools</text>
+  <text x="500" y="177" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">dry-run diff on every write</text>
+
+  <!-- arrow 2 -->
+  <line x1="615" y1="145" x2="723" y2="145" stroke="#a8b2d1" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="669" y="132" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#e9c46a" text-anchor="middle">read / write</text>
+
+  <!-- Box 3: Project files -->
+  <rect x="730" y="90" width="230" height="110" rx="12" fill="#16213e" stroke="#3fa796" stroke-width="1.5"/>
+  <text x="845" y="128" font-family="'Segoe UI', Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">RPG Maker MZ</text>
+  <text x="845" y="148" font-family="'Segoe UI', Arial, sans-serif" font-size="17" font-weight="700" fill="#ffffff" text-anchor="middle">Project</text>
+  <text x="845" y="172" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">data/*.json + assets</text>
+
+  <!-- connector down to subsystem chips -->
+  <line x1="500" y1="210" x2="500" y2="250" stroke="#a8b2d1" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <text x="500" y="280" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#a8b2d1" text-anchor="middle">under the hood, the server is organized by area</text>
+
+  <!-- subsystem chips -->
+  <g font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="600">
+    <rect x="60"  y="310" width="205" height="46" rx="23" fill="#0f3460" stroke="#3fa796" stroke-width="1.5"/>
+    <text x="162" y="339" fill="#e8f1f2" text-anchor="middle">Database CRUD</text>
+
+    <rect x="285" y="310" width="205" height="46" rx="23" fill="#0f3460" stroke="#e9c46a" stroke-width="1.5"/>
+    <text x="387" y="339" fill="#e8f1f2" text-anchor="middle">Maps &amp; Tile Painting</text>
+
+    <rect x="510" y="310" width="205" height="46" rx="23" fill="#0f3460" stroke="#e94560" stroke-width="1.5"/>
+    <text x="612" y="339" fill="#e8f1f2" text-anchor="middle">Event-Command Builders</text>
+
+    <rect x="735" y="310" width="205" height="46" rx="23" fill="#0f3460" stroke="#6fb98f" stroke-width="1.5"/>
+    <text x="837" y="339" fill="#e8f1f2" text-anchor="middle">Validation &amp; Linting</text>
+  </g>
+
+  <text x="500" y="405" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#5c6b8a" text-anchor="middle">Every write is Zod-validated, warn-checked, and previewable with dryRun before it touches disk.</text>
+</svg>
