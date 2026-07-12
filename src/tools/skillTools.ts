@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, readJsonArraySoft, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Skill } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
+import { firstMissingEffectRef } from '../validation/createRefs.js';
 
 /**
  * Get all skills from the project
@@ -89,6 +90,17 @@ export async function createSkill(
     messageType: 1,
     traits: [],
   };
+
+  // Reject a skill whose effects point at a non-existent state / skill / common
+  // event (P2-3: throw at author time, like add_class_learning / create_troop).
+  const [states, commonEvents] = await Promise.all([
+    readJsonArraySoft(getDataPath(projectPath, 'States.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'CommonEvents.json')),
+  ]);
+  const missing = firstMissingEffectRef(newSkill.effects, { states, skills, commonEvents });
+  if (missing) {
+    throw new Error(`Cannot create skill "${newSkill.name}": ${missing}`);
+  }
 
   skills.push(newSkill);
 
@@ -332,7 +344,8 @@ export const skillToolDefinitions: ToolDefinition[] = [
   {
     name: 'create_skill',
     mutates: true,
-    description: 'Create a new skill with custom properties',
+    description:
+      'Create a new skill with custom properties. An effect referencing a missing record throws: Add/Remove State (code 21/22) → state, Learn Skill (43) → skill, Common Event (44) → common event.',
     inputSchema: {
       name: z.string().describe('Skill name'),
       description: z.string().optional().describe('Skill description'),
@@ -436,7 +449,8 @@ export const skillToolDefinitions: ToolDefinition[] = [
   {
     name: 'create_state_skill',
     mutates: true,
-    description: 'Create a state-inflicting skill (poison, sleep, etc.)',
+    description:
+      'Create a state-inflicting skill (poison, sleep, etc.). Throws if `stateId` does not exist in States.json (create the state first with create_state).',
     inputSchema: {
       name: z.string().describe('Skill name'),
       stateId: z.number().describe('State ID (4=poison, 5=blind, 6=silence, 8=confusion, etc.)'),

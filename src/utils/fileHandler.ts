@@ -32,6 +32,22 @@ export async function writeJsonFile(filePath: string, data: any): Promise<void> 
 }
 
 /**
+ * Read a 1-indexed database array file, failing soft: a missing or malformed
+ * file yields `[]` rather than throwing. Used by create-time reference checks
+ * that must degrade to "can't verify" (skip) instead of breaking on a project
+ * (or test fixture) that lacks the target file.
+ */
+export async function readJsonArraySoft<T>(filePath: string): Promise<(T | null)[]> {
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    const parsed = JSON.parse(content);
+    return Array.isArray(parsed) ? (parsed as (T | null)[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * List all files in a directory with a specific extension
  */
 export async function listFiles(dirPath: string, extension: string): Promise<string[]> {

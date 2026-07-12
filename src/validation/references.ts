@@ -72,7 +72,7 @@ const CMD_COMMON_EVENT = 117;
  * to load) is treated as "can't verify" — never a match, but callers guard on
  * array length so a failed load doesn't flag every reference.
  */
-function refExists(arr: readonly (unknown | null)[], id: number): boolean {
+export function refExists(arr: readonly (unknown | null)[], id: number): boolean {
   return id > 0 && id < arr.length && arr[id] != null;
 }
 

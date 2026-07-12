@@ -1,9 +1,10 @@
 import { z } from 'zod';
-import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, readJsonArraySoft, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Enemy, Troop, TroopMember, TroopPage } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 import { validateCommandList, ValidationWarning } from '../validation/eventCommands.js';
+import { firstMissingEnemyRef } from '../validation/createRefs.js';
 import { listAssets } from './assetTools.js';
 
 /**
@@ -148,6 +149,20 @@ export async function createEnemy(
     id: maxId + 1,
   };
 
+  // Reject an enemy whose actions/drops point at a non-existent db record (P2-3:
+  // throw at author time, matching create_troop's member.enemyId check). The
+  // battlerName stays a *warning* (an asset filename, not a db id).
+  const [skills, items, weapons, armors] = await Promise.all([
+    readJsonArraySoft(getDataPath(projectPath, 'Skills.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'Items.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'Weapons.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'Armors.json')),
+  ]);
+  const missing = firstMissingEnemyRef(enemy, { skills, items, weapons, armors });
+  if (missing) {
+    throw new Error(`Cannot create enemy "${enemy.name}": ${missing}`);
+  }
+
   enemies.push(enemy);
   await commitChange(getDataPath(projectPath, 'Enemies.json'), enemies);
   return enemy;
@@ -270,7 +285,7 @@ export const battleToolDefinitions: ToolDefinition[] = [
     name: 'create_enemy',
     mutates: true,
     description:
-      "Create a new enemy in data/Enemies.json. Only `name` is required; omitted fields use the editor's new-enemy defaults (100 HP, one Attack action, no drops). Allocates the next unused enemy id and returns `{ enemy, warnings? }` (warn-by-default: a `battlerName` not found in img/enemies is flagged, never blocked). NOTE: an enemy with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) always misses physical actions — pass one in `traits` if the enemy should land basic attacks.",
+      "Create a new enemy in data/Enemies.json. Only `name` is required; omitted fields use the editor's new-enemy defaults (100 HP, one Attack action, no drops). Allocates the next unused enemy id and returns `{ enemy, warnings? }` (warn-by-default: a `battlerName` not found in img/enemies is flagged, never blocked). Throws if an `actions[].skillId` or a `dropItems[].dataId` (item/weapon/armor by `kind`) references a record that does not exist. NOTE: an enemy with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) always misses physical actions — pass one in `traits` if the enemy should land basic attacks.",
     inputSchema: {
       name: z.string().describe('Enemy name shown in battle and the database'),
       battlerName: z.string().optional().describe('Battler graphic filename (img/enemies)'),

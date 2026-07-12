@@ -1,8 +1,9 @@
 import { z } from 'zod';
-import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, readJsonArraySoft, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { Item, Weapon, Armor, Skill } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
+import { firstMissingEffectRef } from '../validation/createRefs.js';
 
 /** Drop keys whose value is `undefined` so overrides can't clobber template defaults. */
 function definedOnly<T extends object>(obj: T): Partial<T> {
@@ -143,6 +144,18 @@ export async function createItem(
     ...definedOnly(overrides),
     id: maxId + 1,
   };
+
+  // Reject an item whose effects point at a non-existent state / skill / common
+  // event (P2-3: throw at author time, matching create_skill and its siblings).
+  const [states, skills, commonEvents] = await Promise.all([
+    readJsonArraySoft(getDataPath(projectPath, 'States.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'Skills.json')),
+    readJsonArraySoft(getDataPath(projectPath, 'CommonEvents.json')),
+  ]);
+  const missing = firstMissingEffectRef(newItem.effects, { states, skills, commonEvents });
+  if (missing) {
+    throw new Error(`Cannot create item "${newItem.name}": ${missing}`);
+  }
 
   items.push(newItem);
 
@@ -317,7 +330,7 @@ export const itemToolDefinitions: ToolDefinition[] = [
     name: 'create_item',
     mutates: true,
     description:
-      "Create a new item in data/Items.json. Only `name` is worth passing; omitted fields use the editor's new-item defaults (Regular Item, consumable, no effects). Allocates and returns the next unused item id.",
+      "Create a new item in data/Items.json. Only `name` is worth passing; omitted fields use the editor's new-item defaults (Regular Item, consumable, no effects). Allocates and returns the next unused item id. An effect referencing a missing record throws: Add/Remove State (code 21/22) → state, Learn Skill (43) → skill, Common Event (44) → common event.",
     inputSchema: {
       name: z.string().describe('Item name'),
       description: z.string().optional().describe('In-game description text'),
