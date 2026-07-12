@@ -314,3 +314,30 @@ describe('tileset flag tools (integration)', () => {
     ).rejects.toThrow(/Tileset 9 not found/);
   });
 });
+
+const getTilesetsTool = tilesetToolDefinitions.find((t) => t.name === 'get_tilesets')!;
+
+describe('get_tilesets (integration)', () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await scaffold();
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('lists tilesets with labelled, non-empty sheet slots', async () => {
+    const result = (await getTilesetsTool.handler({ projectPath: dir }, {})) as {
+      count: number;
+      tilesets: Array<{ id: number; name: string; mode: number; sheets: Record<string, string> }>;
+    };
+    expect(result.count).toBe(1);
+    expect(result.tilesets[0]).toEqual({
+      id: 1,
+      name: 'Test',
+      mode: 1,
+      // Only slot 5 (B) is populated in the fixture; empty slots are omitted.
+      sheets: { B: 'B' },
+    });
+  });
+});

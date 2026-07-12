@@ -30,6 +30,37 @@ import {
  * pipeline.
  */
 
+/** Slot labels for `Tileset.tilesetNames[9]` — the 9 image sheets in fixed order. */
+const SHEET_SLOTS = ['A1', 'A2', 'A3', 'A4', 'A5', 'B', 'C', 'D', 'E'] as const;
+
+/**
+ * List every tileset with its id, name, mode, and the image sheets it uses
+ * (`tilesetNames`, labelled by slot; empty slots omitted). The paint / catalog /
+ * flag tools all need a `tilesetId`, and `list_names('tilesets')` gives id→name,
+ * but this also exposes which sheets a tileset is built from — so a caller can
+ * pick the right tileset and know which `find_tile`/`get_tile_catalog` sheets
+ * apply. Read-only.
+ */
+export async function getTilesets(projectPath: string): Promise<{
+  count: number;
+  tilesets: Array<{ id: number; name: string; mode: number; sheets: Record<string, string> }>;
+}> {
+  const tilesets = await readJsonFile<(Tileset | null)[]>(
+    getDataPath(projectPath, 'Tilesets.json'),
+  );
+  const entries = tilesets
+    .filter((t): t is Tileset => t != null)
+    .map((t) => {
+      const sheets: Record<string, string> = {};
+      SHEET_SLOTS.forEach((label, i) => {
+        const name = t.tilesetNames[i];
+        if (name) sheets[label] = name;
+      });
+      return { id: t.id, name: t.name, mode: t.mode, sheets };
+    });
+  return { count: entries.length, tilesets: entries };
+}
+
 /** Load one tileset from the project's data/Tilesets.json (1-indexed, slot 0 null). */
 export async function getTileset(projectPath: string, tilesetId: number): Promise<Tileset> {
   const tilesets = await readJsonFile<(Tileset | null)[]>(
@@ -80,6 +111,13 @@ function layeredTileIds(map: MapData, x: number, y: number): number[] {
 }
 
 export const tilesetToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'get_tilesets',
+    description:
+      'List every tileset in the project with its id, name, mode (0 world / 1 area), and the image sheets it uses (labelled A1–A4, A5, B–E; empty slots omitted). Use this to discover valid tilesetId values (needed by find_tile, get_tile_catalog, paint_tiles, fill_area, place_object, get_tile_flags, set_tile_flags, check_passability) and to see which sheets each tileset is built from. For a plain id→name list, list_names(type:"tilesets") is even cheaper. Read-only.',
+    inputSchema: {},
+    handler: (ctx) => getTilesets(ctx.projectPath),
+  },
   {
     name: 'get_tile_flags',
     description:
