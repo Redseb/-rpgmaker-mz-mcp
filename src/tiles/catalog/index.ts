@@ -85,6 +85,13 @@ export interface CatalogEntry {
    * (draft — a name a human may still be verifying).
    */
   source: 'builtin' | 'project';
+  /**
+   * True when the tile's representative sample is significantly transparent, so
+   * it needs an opaque base tile on a lower layer (painting it on layer 0 alone
+   * shows the map's void). Omitted when the sheet PNG couldn't be inspected.
+   * Filled in by the tools layer (`annotateTransparency`), not the pure resolver.
+   */
+  transparent?: boolean;
   /** Free-text tile description — carried through from a `project` catalog only. */
   description?: string;
   /** Vision-naming confidence ('high'/'medium'/'low') — `project` catalog only. */

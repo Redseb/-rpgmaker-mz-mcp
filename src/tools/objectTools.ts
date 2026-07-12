@@ -7,6 +7,7 @@ import { getMap, tileIndex } from './mapTools.js';
 import { getTileset } from './tilesetTools.js';
 import { Passability, layeredPassability, layeredTerrainTag } from '../tiles/tileFlags.js';
 import { isAutotile, flatSheet, TILE_ID, TileSheet } from '../tiles/tileCodec.js';
+import { baseAwareTransparencyWarning } from './tileTransparency.js';
 
 /**
  * Smart multi-tile object placement. A B/C "object" (a house, tree,
@@ -133,6 +134,16 @@ async function placeObject(
     return { x, y, tileId, passable, terrainTag };
   });
   const collision = footprint.filter((c) => isBlocked(c.passable)).map(({ x, y }) => ({ x, y }));
+
+  // A see-through object tile with no opaque tile beneath shows the map's void
+  // (e.g. placed over bare ground with nothing on a lower layer).
+  const voidWarning = await baseAwareTransparencyWarning(
+    projectPath,
+    map,
+    tileset,
+    written.map((c) => ({ ...c, layer })),
+  );
+  if (voidWarning) warnings.push(voidWarning);
 
   await commitChange(getMapPath(projectPath, mapId), map);
 

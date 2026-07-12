@@ -10,6 +10,7 @@ import {
   CatalogOverlay,
   OverlayTile,
 } from '../tiles/catalog/index.js';
+import { annotateTransparency } from './tileTransparency.js';
 
 /** Load one tileset from the project's data/Tilesets.json (1-indexed, slot 0 null). */
 async function getTileset(projectPath: string, tilesetId: number): Promise<Tileset> {
@@ -83,7 +84,7 @@ export const catalogToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_tile_catalog',
     description:
-      "Get the semantic tile catalog for a tileset: the named tiles (e.g. 'Grassland A', 'Forest', 'Sea') in each of its image sheets, each with its representative tile id and a `source` ('builtin' = RPG Maker's own labels; 'project' = a draft name from the vision-bootstrap skill). Project (custom-sheet) entries also carry the skill's `description`, `confidence` ('high'/'medium'/'low'), and `manual` (true = a human verified it) so you can gauge how trustworthy a draft name is. Autotile entries (A1–A4) return the kind's base tile id — feed it to a paint command, which recomputes the shape from neighbours. Covers the default Overworld tileset (World_A1/A2/B/C) plus any custom sheets cataloged into data/tilecatalog/ (via the tileset-catalog skill); still-uncovered sheets are omitted. **Called WITHOUT `sheet` it returns only a per-sheet index (name + entry count) to stay within the tool-output limit — a full tileset can hold thousands of named tiles. Pass `sheet` (filename 'World_A2' or slot role 'A2') to list one sheet's actual tile entries.** Read-only.",
+      "Get the semantic tile catalog for a tileset: the named tiles (e.g. 'Grassland A', 'Forest', 'Sea') in each of its image sheets, each with its representative tile id and a `source` ('builtin' = RPG Maker's own labels; 'project' = a draft name from the vision-bootstrap skill). Project (custom-sheet) entries also carry the skill's `description`, `confidence` ('high'/'medium'/'low'), and `manual` (true = a human verified it) so you can gauge how trustworthy a draft name is. Autotile entries (A1–A4) return the kind's base tile id — feed it to a paint command, which recomputes the shape from neighbours. Covers the default Overworld tileset (World_A1/A2/B/C) plus any custom sheets cataloged into data/tilecatalog/ (via the tileset-catalog skill); still-uncovered sheets are omitted. **Called WITHOUT `sheet` it returns only a per-sheet index (name + entry count) to stay within the tool-output limit — a full tileset can hold thousands of named tiles. Pass `sheet` (filename 'World_A2' or slot role 'A2') to list one sheet's actual tile entries.** Sheet-filtered entries also carry `transparent` (true = the tile is see-through and needs an opaque base tile on a lower layer — painting it on layer 0 alone shows the map void; e.g. trees/objects/overlays). Read-only.",
     inputSchema: {
       tilesetId: z.number().int().positive().describe('Tileset id (from Tilesets.json / the map)'),
       sheet: z
@@ -123,6 +124,10 @@ export const catalogToolDefinitions: ToolDefinition[] = [
         };
       }
 
+      // A single sheet's entries are bounded — annotate each with its
+      // transparency (needs-a-base) flag by reading the sheet PNG.
+      await annotateTransparency(ctx.projectPath, tileset, entries);
+
       return {
         tilesetId: args.tilesetId,
         tilesetName: tileset.name,
@@ -136,7 +141,7 @@ export const catalogToolDefinitions: ToolDefinition[] = [
   {
     name: 'find_tile',
     description:
-      "Find tiles in a tileset by a case-insensitive SUBSTRING match on their catalog name — a quick bridge from a name fragment like 'grass' or 'forest' to a paintable tile id. This is a literal substring match, NOT synonym/semantic search: 'water' matches 'Endless Waterfall' but not 'Sea' or 'Pond' (their names lack the substring). To browse the actual tile names first, use get_tile_catalog with a `sheet` filter, then search a fragment you see. Returns matching catalog entries (name, sheet, tile id, autotile kind, `source`, plus `description`/`confidence`/`manual` for project catalog drafts). Covers the default Overworld tileset plus custom sheets cataloged into data/tilecatalog/ (via the tileset-catalog skill). Read-only.",
+      "Find tiles in a tileset by a case-insensitive SUBSTRING match on their catalog name — a quick bridge from a name fragment like 'grass' or 'forest' to a paintable tile id. This is a literal substring match, NOT synonym/semantic search: 'water' matches 'Endless Waterfall' but not 'Sea' or 'Pond' (their names lack the substring). To browse the actual tile names first, use get_tile_catalog with a `sheet` filter, then search a fragment you see. Returns matching catalog entries (name, sheet, tile id, autotile kind, `source`, `transparent` [true = needs an opaque base on a lower layer], plus `description`/`confidence`/`manual` for project catalog drafts). Covers the default Overworld tileset plus custom sheets cataloged into data/tilecatalog/ (via the tileset-catalog skill). Read-only.",
     inputSchema: {
       tilesetId: z.number().int().positive().describe('Tileset id (from Tilesets.json / the map)'),
       query: z
@@ -149,6 +154,7 @@ export const catalogToolDefinitions: ToolDefinition[] = [
       const tileset = await getTileset(ctx.projectPath, args.tilesetId);
       const overlay = await loadProjectCatalogs(ctx.projectPath);
       const matches = findTiles(tileset.tilesetNames, args.query, overlay);
+      await annotateTransparency(ctx.projectPath, tileset, matches);
       return { tilesetId: args.tilesetId, query: args.query, count: matches.length, matches };
     },
   },

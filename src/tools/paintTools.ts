@@ -6,6 +6,8 @@ import { MapData } from '../utils/types.js';
 import { getMap, tileIndex } from './mapTools.js';
 import { LayerAccess, applyAutotiling } from '../tiles/paint.js';
 import { isAutotile } from '../tiles/tileCodec.js';
+import { getTileset } from './tilesetTools.js';
+import { baseAwareTransparencyWarning } from './tileTransparency.js';
 
 /** The 6 z-layers: 0-1 lower tiles, 2-3 upper tiles, 4 shadow, 5 region id. */
 const MAX_LAYER = 5;
@@ -47,7 +49,7 @@ async function paintCells(
   const map = await getMap(projectPath, mapId);
   const grid = layerAccess(map, layer);
   const warnings: string[] = [];
-  const painted: { x: number; y: number }[] = [];
+  const painted: { x: number; y: number; tileId: number }[] = [];
   let sawAutotile = false;
 
   for (const cell of cells) {
@@ -58,7 +60,7 @@ async function paintCells(
       continue;
     }
     grid.set(cell.x, cell.y, cell.tileId);
-    painted.push({ x: cell.x, y: cell.y });
+    painted.push({ x: cell.x, y: cell.y, tileId: cell.tileId });
     if (isAutotile(cell.tileId)) sawAutotile = true;
   }
 
@@ -71,6 +73,24 @@ async function paintCells(
   }
 
   applyAutotiling(grid, painted);
+
+  // Base-aware transparency check (tile layers only — shadow/region hold no tiles):
+  // a see-through tile with no opaque tile beneath shows the map's void. Advisory
+  // only — a missing/unreadable tileset must never break a paint, so fail soft.
+  if (layer < TILE_LAYERS && painted.length > 0) {
+    try {
+      const tileset = await getTileset(projectPath, map.tilesetId);
+      const warning = await baseAwareTransparencyWarning(
+        projectPath,
+        map,
+        tileset,
+        painted.map((c) => ({ ...c, layer })),
+      );
+      if (warning) warnings.push(warning);
+    } catch {
+      // No tileset / unreadable sheets → skip the advisory transparency warning.
+    }
+  }
 
   await commitChange(getMapPath(projectPath, mapId), map);
 
