@@ -234,7 +234,7 @@ export const battleToolDefinitions: ToolDefinition[] = [
     name: 'create_enemy',
     mutates: true,
     description:
-      "Create a new enemy in data/Enemies.json. Only `name` is required; omitted fields use the editor's new-enemy defaults (100 HP, one Attack action, no drops). Allocates and returns the next unused enemy id.",
+      "Create a new enemy in data/Enemies.json. Only `name` is required; omitted fields use the editor's new-enemy defaults (100 HP, one Attack action, no drops). Allocates and returns the next unused enemy id. NOTE: an enemy with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) always misses physical actions — pass one in `traits` if the enemy should land basic attacks.",
     inputSchema: {
       name: z.string().describe('Enemy name shown in battle and the database'),
       battlerName: z.string().optional().describe('Battler graphic filename (img/enemies)'),

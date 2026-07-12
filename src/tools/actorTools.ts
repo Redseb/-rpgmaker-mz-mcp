@@ -176,7 +176,7 @@ export const actorToolDefinitions: ToolDefinition[] = [
     name: 'create_actor',
     mutates: true,
     description:
-      "Create a new actor in data/Actors.json. Only `name` is required; omitted fields use the editor's new-actor defaults (class 1, level 1-99, five empty equip slots, no traits). Allocates and returns the next unused actor id.",
+      "Create a new actor in data/Actors.json. Only `name` is required; omitted fields use the editor's new-actor defaults (class 1, level 1-99, five empty equip slots, no traits). Allocates and returns the next unused actor id. NOTE: an actor's physical accuracy comes from its class + own traits — a class/actor with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) always misses physical actions. The built-in class 1 has one; a custom class needs it added.",
     inputSchema: {
       name: z.string(),
       nickname: z.string().optional(),

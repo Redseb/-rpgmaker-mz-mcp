@@ -189,7 +189,7 @@ export const classToolDefinitions: ToolDefinition[] = [
     name: 'create_class',
     mutates: true,
     description:
-      "Create a new character class in data/Classes.json. Only `name` is required; omitted fields use the editor's new-class defaults (EXP curve [30,20,30,30], no traits/learnings, a linear param curve to maxLevel). Allocates and returns the next unused class id.",
+      "Create a new character class in data/Classes.json. Only `name` is required; omitted fields use the editor's new-class defaults (EXP curve [30,20,30,30], no traits/learnings, a linear param curve to maxLevel). Allocates and returns the next unused class id. NOTE: a class with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) makes its actors always miss physical actions — pass one in `traits` for a combat-ready class.",
     inputSchema: {
       name: z.string().describe('Class name shown in the database'),
       maxLevel: z
