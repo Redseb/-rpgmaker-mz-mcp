@@ -727,7 +727,7 @@ export const mapToolDefinitions: ToolDefinition[] = [
     name: 'create_map',
     mutates: true,
     description:
-      'Create a new blank map: writes a new data/MapNNN.json (all tiles unpainted) and registers it in the map tree (MapInfos.json). Allocates the next unused map id and returns it. Paint tiles with set_map_tile and add events afterward.',
+      'Create a new blank map: writes a new data/MapNNN.json (all tiles unpainted) and registers it in the map tree (MapInfos.json). Allocates the next unused map id and returns it. Paint tiles afterward with paint_tiles/fill_area (autotile-aware) and add events with create_map_event/create_npc.',
     inputSchema: {
       name: z.string().describe('Map name shown in the editor map tree'),
       width: z.number().int().positive().optional().describe('Width in tiles (default 17)'),
@@ -739,14 +739,20 @@ export const mapToolDefinitions: ToolDefinition[] = [
         .describe('Parent map id in the tree; 0 (default) = top level'),
       tilesetId: z.number().int().positive().optional().describe('Tileset id (default 1)'),
     },
-    handler: (ctx, args) =>
-      createMap(ctx.projectPath, {
+    handler: async (ctx, args) => {
+      const { mapId, mapInfo, map } = await createMap(ctx.projectPath, {
         name: args.name,
         width: args.width,
         height: args.height,
         parentId: args.parentId,
         tilesetId: args.tilesetId,
-      }),
+      });
+      // Drop the large all-zero blank tile array from the response — a fresh map
+      // is unpainted by definition, so echoing ~w*h*6 zeros is pure bloat (P2-6).
+      // get_map returns the full `data` when it's actually needed.
+      const { data, ...mapWithoutData } = map;
+      return { mapId, mapInfo, map: { ...mapWithoutData, dataTileCount: data.length } };
+    },
   },
   {
     name: 'delete_map',

@@ -111,13 +111,19 @@ describe('createMap (integration)', () => {
     expect(infos[2]).toBeUndefined();
   });
 
-  it('the create_map tool handler dispatches to createMap', async () => {
+  it('the create_map tool handler dispatches to createMap and trims the blank data array', async () => {
     const def = mapToolDefinitions.find((t) => t.name === 'create_map')!;
     expect(def.mutates).toBe(true);
     const result = (await def.handler({ projectPath: dir }, { name: 'ViaTool' })) as {
       mapId: number;
+      mapInfo: MapInfo;
+      map: MapData & { dataTileCount: number; data?: unknown };
     };
     expect(result.mapId).toBe(2);
+    // P2-6: the response omits the ~w*h*6 all-zero tile array, reporting its size.
+    expect(result.map.data).toBeUndefined();
+    expect(result.map.dataTileCount).toBe(17 * 13 * 6);
+    expect(result.mapInfo.name).toBe('ViaTool');
   });
 });
 

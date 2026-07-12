@@ -169,7 +169,7 @@ export const commonEventToolDefinitions: ToolDefinition[] = [
   {
     name: 'call_common_event',
     description:
-      'Build a "Common Event" event command (code 117) that calls the given common event, for insertion into an event page via add_event_command. Validates the common event exists. Read-only: returns the command, writes nothing.',
+      'Build a "Common Event" event command (code 117) that calls the given common event, for insertion into an event page via insert_event_commands. Validates the common event exists. Read-only: returns `{ command }` (matching the build_* tools, so it composes into a thenBranch/commands array); writes nothing.',
     inputSchema: {
       commonEventId: z.number().describe('The ID of the common event to call (must exist)'),
       indent: z
@@ -178,6 +178,8 @@ export const commonEventToolDefinitions: ToolDefinition[] = [
         .optional()
         .describe('Indentation level in the target list (default 0)'),
     },
-    handler: (ctx, args) => callCommonEvent(ctx.projectPath, args.commonEventId, args.indent),
+    handler: async (ctx, args) => ({
+      command: await callCommonEvent(ctx.projectPath, args.commonEventId, args.indent),
+    }),
   },
 ];

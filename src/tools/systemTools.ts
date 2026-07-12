@@ -318,9 +318,10 @@ export const systemToolDefinitions: ToolDefinition[] = [
   },
   {
     name: 'get_party',
-    description: 'Get the starting party — the actor ids the game begins with.',
+    description:
+      "Get the starting party — the actor ids the game begins with. Returns `{ partyMembers }`, rhyming with set_party's input/output shape.",
     inputSchema: {},
-    handler: (ctx) => getPartyMembers(ctx.projectPath),
+    handler: async (ctx) => ({ partyMembers: await getPartyMembers(ctx.projectPath) }),
   },
   {
     name: 'set_party',

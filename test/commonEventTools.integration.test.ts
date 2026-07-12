@@ -86,6 +86,14 @@ describe('common event tools (integration)', () => {
     await expect(callCommonEvent(dir, 99)).rejects.toThrow(/does not exist/);
   });
 
+  it('the call_common_event tool handler wraps the command in { command } (P2-8)', async () => {
+    const def = commonEventToolDefinitions.find((t) => t.name === 'call_common_event')!;
+    const result = (await def.handler({ projectPath: dir }, { commonEventId: 1 })) as {
+      command: EventCommand;
+    };
+    expect(result.command).toEqual({ code: 117, indent: 0, parameters: [1] });
+  });
+
   it('list_names indexes common events', async () => {
     const result = await listNames(dir, 'common_events');
     expect(result.entries).toEqual([{ id: 1, name: 'Heal Party' }]);
@@ -106,8 +114,10 @@ describe('common event tools (integration)', () => {
   it('the call_common_event tool is read-only and returns the command', async () => {
     const def = commonEventToolDefinitions.find((t) => t.name === 'call_common_event')!;
     expect(def.mutates).toBeUndefined();
-    const command = (await def.handler({ projectPath: dir }, { commonEventId: 1 })) as EventCommand;
-    expect(command.code).toBe(117);
+    const result = (await def.handler({ projectPath: dir }, { commonEventId: 1 })) as {
+      command: EventCommand;
+    };
+    expect(result.command.code).toBe(117);
   });
 
   it('dry-run previews the write without touching disk', async () => {

@@ -10,6 +10,7 @@ import {
   getTypes,
   setTypeName,
   setCurrencyUnit,
+  systemToolDefinitions,
 } from '../src/tools/systemTools.js';
 
 /** A minimal System.json with the fields these tools touch. */
@@ -67,6 +68,12 @@ describe('system tools (integration)', () => {
 
   it('set_party rejects a non-existent actor id', async () => {
     await expect(updatePartyMembers(dir, [1, 99])).rejects.toThrow(/actor id 99 does not exist/);
+  });
+
+  it('the get_party handler returns { partyMembers }, rhyming with set_party (P2-8)', async () => {
+    const def = systemToolDefinitions.find((t) => t.name === 'get_party')!;
+    const result = (await def.handler({ projectPath: dir }, {})) as { partyMembers: number[] };
+    expect(result).toEqual({ partyMembers: [1] });
   });
 
   it('setTerm edits an indexed array category', async () => {
