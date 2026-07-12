@@ -4,7 +4,23 @@ import { getMap, getMapInfos, getMapEvent } from './mapTools.js';
 import { validateEvent, validateEvents, ValidationWarning } from '../validation/eventCommands.js';
 import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { checkReferences, ProjectData, ReferenceWarning } from '../validation/references.js';
-import { SystemData, MapInfo } from '../utils/types.js';
+import {
+  checkAssets,
+  AssetProjectData,
+  AvailableAssets,
+  AssetWarning,
+} from '../validation/assets.js';
+import { listAssets, AssetType } from './assetTools.js';
+import {
+  SystemData,
+  MapInfo,
+  Actor,
+  Enemy,
+  Tileset,
+  Troop,
+  CommonEvent,
+  MapData,
+} from '../utils/types.js';
 
 /**
  * Validate a single event's command lists against the known-command table.
@@ -134,6 +150,95 @@ export async function validateReferencesTool(
   return { ok: warnings.length === 0, warnings };
 }
 
+/** The asset types the filename audit scans (a subset of list_assets' kinds). */
+const AUDITED_ASSET_TYPES: AssetType[] = [
+  'characters',
+  'faces',
+  'sv_actors',
+  'enemies',
+  'tilesets',
+  'titles1',
+  'titles2',
+  'battlebacks1',
+  'battlebacks2',
+  'parallaxes',
+  'pictures',
+  'bgm',
+  'bgs',
+  'me',
+  'se',
+];
+
+/**
+ * Enumerate the available basenames for every audited asset type into a lookup
+ * the pure checker can test against. `listAssets` fails soft (a missing dir →
+ * `[]`), so an unused asset kind maps to an empty set and its references are
+ * skipped rather than flagged.
+ */
+async function buildAvailableAssets(projectPath: string): Promise<AvailableAssets> {
+  const assets: AvailableAssets = {};
+  for (const type of AUDITED_ASSET_TYPES) {
+    const { names } = await listAssets(projectPath, type);
+    assets[type] = new Set(names);
+  }
+  return assets;
+}
+
+/**
+ * Load the project records that carry asset-filename fields (the maps in full,
+ * for their map-level audio/images and event lists). Every read fails soft to an
+ * empty array (or `null` for `System.json`), so a missing file degrades the audit
+ * rather than throwing.
+ */
+async function loadAssetData(projectPath: string): Promise<AssetProjectData> {
+  const mapInfos = await loadArray<MapInfo>(projectPath, 'MapInfos.json');
+  const maps: AssetProjectData['maps'] = [];
+  for (const info of mapInfos) {
+    if (!info) continue;
+    try {
+      maps.push({ id: info.id, map: (await getMap(projectPath, info.id)) as MapData });
+    } catch {
+      // A map listed in MapInfos may not have a MapNNN.json file yet; skip it.
+    }
+  }
+
+  let system: SystemData | null = null;
+  try {
+    system = await readJsonFile<SystemData>(getDataPath(projectPath, 'System.json'));
+  } catch {
+    system = null;
+  }
+
+  return {
+    actors: await loadArray<Actor>(projectPath, 'Actors.json'),
+    enemies: await loadArray<Enemy>(projectPath, 'Enemies.json'),
+    tilesets: await loadArray<Tileset>(projectPath, 'Tilesets.json'),
+    maps,
+    troops: await loadArray<Troop>(projectPath, 'Troops.json'),
+    commonEvents: await loadArray<CommonEvent>(projectPath, 'CommonEvents.json'),
+    system,
+  };
+}
+
+/**
+ * Project-wide asset-*filename* audit (read-only, warn-by-default). Scans every
+ * asset-name field across the database, maps, and system against the files that
+ * actually exist on disk, reporting each dangling reference — the systematic
+ * complement to the per-record create-time warnings (a `battlerName` typo would
+ * otherwise only surface as a runtime "Failed to load …" error). The *id*-
+ * integrity sibling is `validate_references`.
+ */
+export async function validateAssetsTool(
+  projectPath: string,
+): Promise<{ ok: boolean; warnings: AssetWarning[] }> {
+  const [data, assets] = await Promise.all([
+    loadAssetData(projectPath),
+    buildAvailableAssets(projectPath),
+  ]);
+  const warnings = checkAssets(data, assets);
+  return { ok: warnings.length === 0, warnings };
+}
+
 export const validationToolDefinitions: ToolDefinition[] = [
   {
     name: 'validate_event',
@@ -158,5 +263,12 @@ export const validationToolDefinitions: ToolDefinition[] = [
       'Audit cross-file reference integrity across the whole project (read-only, warn-by-default): Transfer Player targets and starting position point at existing maps; starting party, actor classes, class/enemy skills, troop members, enemy drops, and skill/item effects (states, learned skills, common events, animations) all resolve; and the map tree has no dangling or cyclic parentId. Complements validate_project (which checks command shape). Returns { ok, warnings[] }.',
     inputSchema: {},
     handler: (ctx) => validateReferencesTool(ctx.projectPath),
+  },
+  {
+    name: 'validate_assets',
+    description:
+      'Audit asset-filename integrity across the whole project (read-only, warn-by-default): every image/audio name field — actor characterName/faceName/battlerName, enemy battlerName, tileset sheets, map bgm/bgs/parallax/battlebacks, event page graphics, event Play BGM/BGS/ME/SE / Show Picture / Show Text face / Change Actor Images, and system titles/battlebacks/default audio/vehicle graphics — is checked against the files present under img/ and audio/. Catches a wrong filename (e.g. a battlerName with no matching img/enemies/*.png) before it becomes a runtime "Failed to load" error. An asset kind whose directory is empty/missing is skipped (not flagged). Complements validate_references (which checks id integrity). Returns { ok, warnings[] }.',
+    inputSchema: {},
+    handler: (ctx) => validateAssetsTool(ctx.projectPath),
   },
 ];
