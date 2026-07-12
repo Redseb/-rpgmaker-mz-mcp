@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { blankMapData, getMap, tileIndex } from '../src/tools/mapTools.js';
-import { objectToolDefinitions } from '../src/tools/objectTools.js';
+import { objectToolDefinitions, flatObjectGrid } from '../src/tools/objectTools.js';
 import { makeAutotileId } from '../src/tiles/tileCodec.js';
 
 /**
@@ -170,8 +170,84 @@ describe('place_object (integration)', () => {
     });
   });
 
-  it('is a single registered mutating tool', () => {
-    expect(objectToolDefinitions.map((t) => t.name)).toEqual(['place_object']);
+  it('registers place_object (mutating) and object_tiles (read-only)', () => {
+    expect(objectToolDefinitions.map((t) => t.name).sort()).toEqual([
+      'object_tiles',
+      'place_object',
+    ]);
     expect(placeObject.mutates).toBe(true);
+    expect(objectTiles.mutates).toBeUndefined();
+  });
+});
+
+const objectTiles = objectToolDefinitions.find((t) => t.name === 'object_tiles')!;
+
+describe('flatObjectGrid (pure)', () => {
+  it('walks down a half-column with an 8-tile stride, not 16', () => {
+    // B sheet (base 0), top-left local index 1 → visual (col 1, row 0).
+    expect(flatObjectGrid(1, 2, 2)).toEqual([
+      [1, 2],
+      [9, 10],
+    ]);
+  });
+
+  it('wraps across the half-column boundary (col 8 jumps to index 128)', () => {
+    // top-left at col 6, row 0; a 4-wide row crosses into the right half-column.
+    expect(flatObjectGrid(6, 4, 1)).toEqual([[6, 7, 128, 129]]);
+  });
+
+  it('offsets by the sheet base (C sheet base 256)', () => {
+    expect(flatObjectGrid(257, 2, 1)).toEqual([[257, 258]]);
+  });
+
+  it('throws on an autotile top-left id', () => {
+    expect(() => flatObjectGrid(makeAutotileId(16, 0), 2, 2)).toThrow(/autotile/);
+  });
+
+  it('throws when the rectangle runs off the 16x16 sheet', () => {
+    // local index 135 → right half, col 15, row 0; width 2 would need col 16.
+    expect(() => flatObjectGrid(135, 2, 1)).toThrow(/runs off/);
+  });
+});
+
+describe('object_tiles (integration)', () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await scaffold(6, 6, true); // fixture tileset 1 has a B sheet ("Fixture_B")
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('returns the id grid and the resolved sheet name, no warning', async () => {
+    const res = (await objectTiles.handler(
+      { projectPath: dir },
+      { tilesetId: 1, topLeftId: 1, width: 2, height: 2 },
+    )) as { sheet: string; sheetName: string; tiles: number[][]; warnings?: string[] };
+    expect(res.sheet).toBe('B');
+    expect(res.sheetName).toBe('Fixture_B');
+    expect(res.tiles).toEqual([
+      [1, 2],
+      [9, 10],
+    ]);
+    expect(res.warnings).toBeUndefined();
+  });
+
+  it('warns when the tileset lacks the referenced sheet (C is empty in the fixture)', async () => {
+    const res = (await objectTiles.handler(
+      { projectPath: dir },
+      { tilesetId: 1, topLeftId: 257, width: 1, height: 1 },
+    )) as { sheet: string; warnings?: string[] };
+    expect(res.sheet).toBe('C');
+    expect(res.warnings?.some((w) => /no C sheet/.test(w))).toBe(true);
+  });
+
+  it('throws on an unknown tileset id', async () => {
+    await expect(
+      objectTiles.handler(
+        { projectPath: dir },
+        { tilesetId: 99, topLeftId: 1, width: 1, height: 1 },
+      ),
+    ).rejects.toThrow(/Tileset 99/);
   });
 });

@@ -6,7 +6,7 @@ import { MapData, Tileset } from '../utils/types.js';
 import { getMap, tileIndex } from './mapTools.js';
 import { getTileset } from './tilesetTools.js';
 import { Passability, layeredPassability, layeredTerrainTag } from '../tiles/tileFlags.js';
-import { isAutotile } from '../tiles/tileCodec.js';
+import { isAutotile, flatSheet, TILE_ID, TileSheet } from '../tiles/tileCodec.js';
 
 /**
  * Smart multi-tile object placement. A B/C "object" (a house, tree,
@@ -146,7 +146,111 @@ async function placeObject(
   return warnings.length > 0 ? { ...result, warnings } : result;
 }
 
+// --- object_tiles: expand a top-left flat id into an id grid (P2-5) ----------
+
+/**
+ * Flat sheets (A5/B–E) are laid out as two side-by-side 8-wide half-columns, so
+ * a sheet is visually 16 tiles wide × 16 tall (256 tiles). A local index maps to
+ * a visual (col, row): the first 128 indices fill the left half (cols 0–7), the
+ * next 128 the right half (cols 8–15). "The tile below index i" is therefore NOT
+ * `i + 16` — these two helpers convert between a local index and its visual cell
+ * so a multi-tile object's grid can be reconstructed correctly.
+ */
+function flatIndexToColRow(localIndex: number): { col: number; row: number } {
+  const half = Math.floor(localIndex / 128) % 2; // 0 = left half (cols 0-7), 1 = right (8-15)
+  const x = localIndex % 8;
+  const row = Math.floor((localIndex % 128) / 8); // 0..15
+  return { col: half * 8 + x, row };
+}
+function flatColRowToIndex(col: number, row: number): number {
+  const half = Math.floor(col / 8); // 0 (cols 0-7) or 1 (cols 8-15)
+  const x = col % 8;
+  return half * 128 + row * 8 + x;
+}
+
+/**
+ * Expand a top-left flat tile id + a WxH size into the rectangular grid of tile
+ * ids that object occupies on the sheet, handling the two-half-column wrap (the
+ * fiddly bit `place_object` deferred). Pure (no I/O) so the wrap math is
+ * unit-testable. Throws when `topLeftId` isn't a flat id (0/autotile), when it's
+ * outside a sheet's 0–255 local range, or when the WxH rectangle runs off the
+ * 16×16 sheet.
+ */
+export function flatObjectGrid(topLeftId: number, width: number, height: number): number[][] {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
+    throw new Error(`object_tiles width/height must be positive integers (got ${width}x${height})`);
+  }
+  const sheet = flatSheet(topLeftId);
+  if (topLeftId <= 0 || sheet === null) {
+    const why = isAutotile(topLeftId) ? ', an autotile — use paint_tiles for terrain' : '';
+    throw new Error(
+      `object_tiles needs a flat B/C/D/E/A5 tile id as topLeftId (got ${topLeftId}${why})`,
+    );
+  }
+  const base = TILE_ID[sheet as keyof typeof TILE_ID];
+  const local0 = topLeftId - base;
+  if (local0 < 0 || local0 > 255) {
+    throw new Error(`topLeftId ${topLeftId} is out of sheet ${sheet}'s flat range`);
+  }
+  const { col: col0, row: row0 } = flatIndexToColRow(local0);
+  if (col0 + width > 16 || row0 + height > 16) {
+    throw new Error(
+      `a ${width}x${height} object at sheet ${sheet} position (col ${col0}, row ${row0}) runs off the 16x16 sheet`,
+    );
+  }
+  const grid: number[][] = [];
+  for (let r = 0; r < height; r++) {
+    const rowIds: number[] = [];
+    for (let c = 0; c < width; c++) {
+      rowIds.push(base + flatColRowToIndex(col0 + c, row0 + r));
+    }
+    grid.push(rowIds);
+  }
+  return grid;
+}
+
+/** Which `tilesetNames` slot each flat sheet occupies (A1–A4 are 0–3). */
+const FLAT_SHEET_SLOT: Record<string, number> = { A5: 4, B: 5, C: 6, D: 7, E: 8 };
+
 export const objectToolDefinitions: ToolDefinition[] = [
+  {
+    name: 'object_tiles',
+    description:
+      "Expand a top-left flat tile id + a width×height size into the grid of tile ids that object occupies on the sheet — feed the returned `tiles` straight into place_object. This handles the flat sheets' two-half-column layout, where the tile below id N is NOT N+16 (indices 0–127 are the left half of the sheet, 128–255 the right), which is otherwise painful to compute by hand. Get the top-left id from find_tile/get_tile_catalog. Read-only. Throws if topLeftId isn't a flat id or the rectangle runs off the 16×16 sheet; warns if the tileset lacks that sheet.",
+    inputSchema: {
+      tilesetId: z.number().int().positive().describe('The tileset id the object belongs to'),
+      topLeftId: z
+        .number()
+        .int()
+        .describe(
+          "Raw flat tile id of the object's top-left cell (from find_tile/get_tile_catalog)",
+        ),
+      width: z.number().int().positive().describe('Object width in tiles'),
+      height: z.number().int().positive().describe('Object height in tiles'),
+    },
+    handler: async (ctx, args) => {
+      const tiles = flatObjectGrid(args.topLeftId, args.width, args.height);
+      const sheet = flatSheet(args.topLeftId) as TileSheet; // flatObjectGrid validated it
+      const tileset = await getTileset(ctx.projectPath, args.tilesetId); // throws if missing
+      const sheetName = tileset.tilesetNames[FLAT_SHEET_SLOT[sheet]] ?? '';
+      const warnings: string[] = [];
+      if (!sheetName) {
+        warnings.push(
+          `tileset ${args.tilesetId} has no ${sheet} sheet — these ids may not render on it`,
+        );
+      }
+      const result = {
+        tilesetId: args.tilesetId,
+        sheet,
+        sheetName,
+        topLeftId: args.topLeftId,
+        width: args.width,
+        height: args.height,
+        tiles,
+      };
+      return warnings.length > 0 ? { ...result, warnings } : result;
+    },
+  },
   {
     name: 'place_object',
     mutates: true,
