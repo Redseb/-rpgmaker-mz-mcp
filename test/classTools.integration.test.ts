@@ -111,6 +111,24 @@ describe('class tools (integration)', () => {
     expect(result.id).toBe(2);
   });
 
+  it('class-mutation handlers return a compact params summary, not the full matrix', async () => {
+    const def = classToolDefinitions.find((t) => t.name === 'create_class')!;
+    const result = (await def.handler({ projectPath: dir }, { name: 'Compact' })) as {
+      id: number;
+      params?: unknown;
+      maxLevel: number;
+      paramCurves: { param: string; atLevel1: number; atMaxLevel: number }[];
+    };
+    // The full 8×(maxLevel+1) matrix must NOT be echoed.
+    expect(result.params).toBeUndefined();
+    expect(result.maxLevel).toBe(99);
+    expect(result.paramCurves).toHaveLength(8);
+    expect(result.paramCurves[0]).toMatchObject({ param: 'maxHP' });
+    // But the on-disk write still carries the full matrix.
+    const onDisk = (await getClasses(dir)).find((c) => c?.id === result.id)!;
+    expect(onDisk.params[0]).toHaveLength(100);
+  });
+
   it('dry-run previews the write without touching disk', async () => {
     const context: CommitContext = { dryRun: true, commits: [] };
     await commitStore.run(context, async () => {

@@ -178,6 +178,24 @@ export async function setClassParamCurve(
   return classes[index]!;
 }
 
+/**
+ * A compact response view of a class for mutation tools. The on-disk record keeps
+ * its full 8×(maxLevel+1) `params` matrix, but echoing 800+ numbers back on every
+ * edit (e.g. adding one skill learning) is pure token waste — so the tool response
+ * replaces `params` with `maxLevel` plus a per-param first/last-level preview. A
+ * caller that needs the whole curve can still `get_classes`.
+ */
+function summarizeClass(c: GameClass) {
+  const { params, ...rest } = c;
+  const maxLevel = (params?.[0]?.length ?? 1) - 1;
+  const paramCurves = params?.map((row, i) => ({
+    param: PARAM_NAMES[i],
+    atLevel1: row[1],
+    atMaxLevel: row[maxLevel],
+  }));
+  return { ...rest, maxLevel, paramCurves };
+}
+
 export const classToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_classes',
@@ -215,9 +233,9 @@ export const classToolDefinitions: ToolDefinition[] = [
       traits: z.array(z.unknown()).optional().describe('Trait objects { code, dataId, value }'),
       note: z.string().optional().describe('Note field'),
     },
-    handler: (ctx, args) => {
+    handler: async (ctx, args) => {
       const { dryRun: _dryRun, name, ...rest } = args;
-      return createClass(ctx.projectPath, { name, ...rest });
+      return summarizeClass(await createClass(ctx.projectPath, { name, ...rest }));
     },
   },
   {
@@ -231,7 +249,8 @@ export const classToolDefinitions: ToolDefinition[] = [
         .record(z.string(), z.unknown())
         .describe('Object containing class properties to update'),
     },
-    handler: (ctx, args) => updateClass(ctx.projectPath, args.classId, args.updates),
+    handler: async (ctx, args) =>
+      summarizeClass(await updateClass(ctx.projectPath, args.classId, args.updates)),
   },
   {
     name: 'add_class_learning',
@@ -244,8 +263,10 @@ export const classToolDefinitions: ToolDefinition[] = [
       level: z.number().int().describe('Level at which the skill is learned'),
       note: z.string().optional().describe('Optional note for the learning entry'),
     },
-    handler: (ctx, args) =>
-      addClassLearning(ctx.projectPath, args.classId, args.skillId, args.level, args.note),
+    handler: async (ctx, args) =>
+      summarizeClass(
+        await addClassLearning(ctx.projectPath, args.classId, args.skillId, args.level, args.note),
+      ),
   },
   {
     name: 'set_class_param_curve',
@@ -264,7 +285,9 @@ export const classToolDefinitions: ToolDefinition[] = [
         .array(z.number())
         .describe('New curve, indexed by level; must match the existing curve length'),
     },
-    handler: (ctx, args) =>
-      setClassParamCurve(ctx.projectPath, args.classId, args.paramId, args.values),
+    handler: async (ctx, args) =>
+      summarizeClass(
+        await setClassParamCurve(ctx.projectPath, args.classId, args.paramId, args.values),
+      ),
   },
 ];
