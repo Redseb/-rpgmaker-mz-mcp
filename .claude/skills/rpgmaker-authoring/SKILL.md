@@ -1,6 +1,6 @@
 ---
 name: rpgmaker-authoring
-description: How to build a coherent, playable RPG Maker MZ game with the rpgmaker-mz MCP server — the authoring judgment the tools don't enforce. Use when creating or editing a game with the mcp__rpgmaker-mz__* tools: painting maps, placing NPCs/events, wiring transfers/shops/chests/battles, or setting up a custom cast. Covers tile layering (transparent overlays need a base), the solid-landmark + facing-transfer entrance idiom, giving interactables graphics, verifying asset names, the Hit-Rate trait, the self-switch one-shot pattern, and always playing the build (validators prove structure, not that it looks/plays right). Not for bootstrapping a custom tileset catalog — that's the tileset-catalog skill.
+description: How to build a coherent, playable RPG Maker MZ game with the rpgmaker-mz MCP server — the authoring judgment the tools don't enforce. Use when creating or editing a game with the mcp__rpgmaker-mz__* tools: painting maps, placing NPCs/events, wiring transfers/shops/chests/battles, or setting up a custom cast. Covers tile layering (transparent overlays need a base), the solid-landmark + facing-transfer entrance idiom, giving interactables graphics, verifying asset names, the Hit-Rate and Add-Skill-Type traits, the self-switch one-shot pattern, and always playing the build (validators prove structure, not that it looks/plays right). Not for bootstrapping a custom tileset catalog — that's the tileset-catalog skill.
 ---
 
 # Authoring a playable RPG Maker MZ game
@@ -129,6 +129,14 @@ applyToAutotileKind)` — or check with `get_tile_flags`/`check_passability`.
   ship `traits: []`, and HIT sums from 0 with no baseline, so a trait-free battler
   **always misses** physical actions. (`create_class`/`create_actor`/`create_enemy`
   descriptions carry this NOTE.)
+- **Add Skill Type trait or learned skills never show.** A class's `learnings` only
+  *teach* the skill — the actor can't see or use it unless the class also has an
+  **Add Skill Type** trait for that skill's `stypeId`:
+  `{ code: 41, dataId: <stypeId>, value: 1 }` (default DB: 1 = Magic, 2 = Special).
+  Without it there is **no Magic/Special command in battle or the menu at all** — the
+  symptom is "my characters have no skills" even though `learnings` are correct.
+  Check each learned skill's `stypeId` in `Skills.json` and cover every distinct one
+  with a code-41 trait (a class mixing Magic + Special skills needs both).
 - **Verify every asset name.** A wrong filename is a silent blank sprite **and** a
   runtime load error (`Failed to load img/enemies/Foo.png`). Check names against
   `list_assets(...)` before wiring: `battlerName` → `enemies`, `characterName` →

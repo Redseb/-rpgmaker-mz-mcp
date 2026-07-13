@@ -11,6 +11,7 @@ import {
   setClassParamCurve,
   defaultClass,
   defaultClassParams,
+  skillTypeTraitWarnings,
   classToolDefinitions,
 } from '../src/tools/classTools.js';
 import { listNames } from '../src/tools/listTools.js';
@@ -127,6 +128,60 @@ describe('class tools (integration)', () => {
     // But the on-disk write still carries the full matrix.
     const onDisk = (await getClasses(dir)).find((c) => c?.id === result.id)!;
     expect(onDisk.params[0]).toHaveLength(100);
+  });
+
+  it('add_class_learning warns when the skill type has no Add Skill Type (41) trait', async () => {
+    // Re-seed the lone skill with a skill type so coverage matters.
+    await writeFile(
+      join(dir, 'data', 'Skills.json'),
+      JSON.stringify([null, { ...fireball, stypeId: 1 }]),
+    );
+    const def = classToolDefinitions.find((t) => t.name === 'add_class_learning')!;
+    const warned = (await def.handler(
+      { projectPath: dir },
+      { classId: 1, skillId: 1, level: 1 },
+    )) as {
+      warnings?: { message: string }[];
+    };
+    expect(warned.warnings).toHaveLength(1);
+    expect(warned.warnings![0].message).toMatch(/code: 41, dataId: 1/);
+
+    // Covering the type with a 41 trait silences the warning.
+    await updateClass(dir, 1, { traits: [{ code: 41, dataId: 1, value: 1 }] });
+    const clean = (await def.handler(
+      { projectPath: dir },
+      { classId: 1, skillId: 1, level: 3 },
+    )) as {
+      warnings?: unknown;
+    };
+    expect(clean.warnings).toBeUndefined();
+  });
+
+  it('skillTypeTraitWarnings aggregates per stypeId and skips typeless/unknown skills', () => {
+    const skills = [
+      null,
+      { id: 1, name: 'Heal', stypeId: 1 },
+      { id: 2, name: 'Cure', stypeId: 1 },
+      { id: 3, name: 'Bash', stypeId: 2 },
+      { id: 4, name: 'Attack', stypeId: 0 },
+    ] as (Skill | null)[];
+    const klass: GameClass = {
+      ...defaultClass(),
+      id: 9,
+      name: 'Cleric',
+      traits: [{ code: 41, dataId: 2, value: 1 }],
+      learnings: [
+        { level: 1, skillId: 1, note: '' },
+        { level: 2, skillId: 2, note: '' },
+        { level: 3, skillId: 3, note: '' }, // covered by the 41/2 trait
+        { level: 4, skillId: 4, note: '' }, // stypeId 0 — no command needed
+        { level: 5, skillId: 99, note: '' }, // unknown skill — not this check's job
+      ],
+    };
+    const warnings = skillTypeTraitWarnings(klass, skills);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].message).toMatch(/Heal, Cure/);
+    expect(warnings[0].message).toMatch(/dataId: 1/);
   });
 
   it('dry-run previews the write without touching disk', async () => {

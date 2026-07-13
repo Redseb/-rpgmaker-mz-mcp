@@ -3,6 +3,7 @@ import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { GameClass, Learning, Skill } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
+import { ValidationWarning } from '../validation/eventCommands.js';
 
 /** Human-readable labels for the 8 base parameters, indexed 0-7. */
 export const PARAM_NAMES = ['maxHP', 'maxMP', 'atk', 'def', 'mat', 'mdf', 'agi', 'luk'] as const;
@@ -196,6 +197,56 @@ function summarizeClass(c: GameClass) {
   return { ...rest, maxLevel, paramCurves };
 }
 
+/**
+ * Warn (never throw) when a class learns skills whose skill type is not covered by
+ * an Add Skill Type trait ({ code: 41, dataId: stypeId }). Learnings only *teach*
+ * the skill — without the trait the skill-type command never appears in battle or
+ * the menu, so the actor silently "has no skills" even though the learnings are
+ * correct. One aggregated warning per uncovered stypeId. Skills with stypeId 0
+ * (no type) and learnings pointing at unknown skills are skipped (the latter is
+ * add_class_learning's throw, not this check's job). Pure so it's unit-testable.
+ */
+export function skillTypeTraitWarnings(
+  gameClass: GameClass,
+  skills: (Skill | null)[],
+): ValidationWarning[] {
+  const covered = new Set(
+    (gameClass.traits ?? []).filter((t) => t.code === 41).map((t) => t.dataId),
+  );
+  const missing = new Map<number, string[]>();
+  for (const learning of gameClass.learnings ?? []) {
+    const skill = skills.find((s) => s && s.id === learning.skillId);
+    if (!skill || !skill.stypeId || covered.has(skill.stypeId)) continue;
+    const names = missing.get(skill.stypeId) ?? [];
+    names.push(skill.name || `#${skill.id}`);
+    missing.set(skill.stypeId, names);
+  }
+  return [...missing].map(([stypeId, names]) => ({
+    path: 'learnings',
+    message:
+      `class "${gameClass.name}" learns ${names.join(', ')} (skill type ${stypeId}) but has no ` +
+      `Add Skill Type trait { code: 41, dataId: ${stypeId}, value: 1 } — without it the ` +
+      `skill-type command never appears, so actors can never use these skills`,
+  }));
+}
+
+/**
+ * Attach warn-by-default skill-type coverage to a class-write response (on the
+ * compact summary the handlers return). Fails soft when Skills.json is missing
+ * (nothing to check against — e.g. a bare fixture).
+ */
+async function withSkillTypeWarnings(projectPath: string, gameClass: GameClass) {
+  const summary = summarizeClass(gameClass);
+  let skills: (Skill | null)[];
+  try {
+    skills = await readJsonFile<(Skill | null)[]>(getDataPath(projectPath, 'Skills.json'));
+  } catch {
+    return summary;
+  }
+  const warnings = skillTypeTraitWarnings(gameClass, skills);
+  return warnings.length > 0 ? { ...summary, warnings } : summary;
+}
+
 export const classToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_classes',
@@ -207,7 +258,7 @@ export const classToolDefinitions: ToolDefinition[] = [
     name: 'create_class',
     mutates: true,
     description:
-      "Create a new character class in data/Classes.json. Only `name` is required; omitted fields use the editor's new-class defaults (EXP curve [30,20,30,30], no traits/learnings, a linear param curve to maxLevel). Allocates and returns the next unused class id. NOTE: a class with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) makes its actors always miss physical actions — pass one in `traits` for a combat-ready class.",
+      "Create a new character class in data/Classes.json. Only `name` is required; omitted fields use the editor's new-class defaults (EXP curve [30,20,30,30], no traits/learnings, a linear param curve to maxLevel). Allocates and returns the next unused class id. NOTE: a class with no Hit Rate trait (xparam id 0: trait { code: 22, dataId: 0, value: 0.95 }) makes its actors always miss physical actions — pass one in `traits` for a combat-ready class. Likewise every learned skill's stypeId needs an Add Skill Type trait ({ code: 41, dataId: stypeId, value: 1 }) or the skill-type command never appears (warned, never blocked).",
     inputSchema: {
       name: z.string().describe('Class name shown in the database'),
       maxLevel: z
@@ -235,14 +286,17 @@ export const classToolDefinitions: ToolDefinition[] = [
     },
     handler: async (ctx, args) => {
       const { dryRun: _dryRun, name, ...rest } = args;
-      return summarizeClass(await createClass(ctx.projectPath, { name, ...rest }));
+      return withSkillTypeWarnings(
+        ctx.projectPath,
+        await createClass(ctx.projectPath, { name, ...rest }),
+      );
     },
   },
   {
     name: 'update_class',
     mutates: true,
     description:
-      "Update a class's properties (shallow merge into the existing record). Use for name, expParams, traits, or to replace the whole learnings/params arrays; for targeted edits prefer add_class_learning / set_class_param_curve.",
+      "Update a class's properties (shallow merge into the existing record). Use for name, expParams, traits, or to replace the whole learnings/params arrays; for targeted edits prefer add_class_learning / set_class_param_curve. Warns when a learned skill's stypeId has no Add Skill Type trait ({ code: 41 }).",
     inputSchema: {
       classId: z.number().describe('The ID of the class to update'),
       updates: z
@@ -250,13 +304,16 @@ export const classToolDefinitions: ToolDefinition[] = [
         .describe('Object containing class properties to update'),
     },
     handler: async (ctx, args) =>
-      summarizeClass(await updateClass(ctx.projectPath, args.classId, args.updates)),
+      withSkillTypeWarnings(
+        ctx.projectPath,
+        await updateClass(ctx.projectPath, args.classId, args.updates),
+      ),
   },
   {
     name: 'add_class_learning',
     mutates: true,
     description:
-      'Add a "learn skill at level" entry to a class (replaces the hack of attaching skills to an actor via an Add-Skill trait). Validates the skillId exists and keeps the learnings sorted by level.',
+      'Add a "learn skill at level" entry to a class (replaces the hack of attaching skills to an actor via an Add-Skill trait). Validates the skillId exists and keeps the learnings sorted by level. Warns (never blocks) when the skill\'s stypeId is not covered by an Add Skill Type trait ({ code: 41, dataId: stypeId, value: 1 }) on the class — without it the skill-type command never appears and actors cannot use the skill.',
     inputSchema: {
       classId: z.number().describe('The ID of the class to add the learning to'),
       skillId: z.number().describe('The skill learned (must exist in data/Skills.json)'),
@@ -264,7 +321,8 @@ export const classToolDefinitions: ToolDefinition[] = [
       note: z.string().optional().describe('Optional note for the learning entry'),
     },
     handler: async (ctx, args) =>
-      summarizeClass(
+      withSkillTypeWarnings(
+        ctx.projectPath,
         await addClassLearning(ctx.projectPath, args.classId, args.skillId, args.level, args.note),
       ),
   },
