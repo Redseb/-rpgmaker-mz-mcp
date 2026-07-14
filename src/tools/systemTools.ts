@@ -45,6 +45,11 @@ export async function setVariableName(
   name: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
+  if (variableId < 1 || variableId >= system.variables.length) {
+    throw new Error(
+      `Variable id ${variableId} is out of range (project has ${system.variables.length - 1} variables). Add more in the editor's Database > System first.`,
+    );
+  }
   system.variables[variableId] = name;
 
   const systemPath = getDataPath(projectPath, 'System.json');
@@ -68,6 +73,11 @@ export async function setSwitchName(
   name: string,
 ): Promise<void> {
   const system = await getSystem(projectPath);
+  if (switchId < 1 || switchId >= system.switches.length) {
+    throw new Error(
+      `Switch id ${switchId} is out of range (project has ${system.switches.length - 1} switches). Add more in the editor's Database > System first.`,
+    );
+  }
   system.switches[switchId] = name;
 
   const systemPath = getDataPath(projectPath, 'System.json');
@@ -253,7 +263,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Set a variable name',
     inputSchema: {
-      variableId: z.number().describe('The 1-based variable ID'),
+      variableId: z.number().int().positive().describe('The 1-based variable ID'),
       name: z.string().describe('The name to assign'),
     },
     handler: async (ctx, args) => {
@@ -272,7 +282,7 @@ export const systemToolDefinitions: ToolDefinition[] = [
     mutates: true,
     description: 'Set a switch name',
     inputSchema: {
-      switchId: z.number().describe('The 1-based switch ID'),
+      switchId: z.number().int().positive().describe('The 1-based switch ID'),
       name: z.string().describe('The name to assign'),
     },
     handler: async (ctx, args) => {
