@@ -1039,11 +1039,16 @@ export const mapToolDefinitions: ToolDefinition[] = [
     description:
       'Set a single raw tile ID at (x, y) on a given z-layer (0-5). Note: tile IDs are raw engine integers; this is a low-level primitive without autotile/passability awareness.',
     inputSchema: {
-      mapId: z.number().describe('The ID of the map'),
-      x: z.number().describe('X tile position'),
-      y: z.number().describe('Y tile position'),
-      layer: z.number().describe('Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region)'),
-      tileId: z.number().describe('Raw tile ID'),
+      mapId: z.number().int().positive().describe('The ID of the map'),
+      x: z.number().int().nonnegative().describe('X tile position'),
+      y: z.number().int().nonnegative().describe('Y tile position'),
+      layer: z
+        .number()
+        .int()
+        .min(0)
+        .max(5)
+        .describe('Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region)'),
+      tileId: z.number().int().nonnegative().describe('Raw tile ID'),
     },
     handler: async (ctx, args) => {
       await setMapTile(ctx.projectPath, args.mapId, args.x, args.y, args.layer, args.tileId);
