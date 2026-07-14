@@ -260,13 +260,23 @@ export async function createMap(
 export async function deleteMap(
   projectPath: string,
   mapId: number,
-): Promise<{ mapId: number; reparentedTo: number; reparentedChildren: number[] }> {
+): Promise<{
+  mapId: number;
+  reparentedTo: number;
+  reparentedChildren: number[];
+  warnings?: string[];
+}> {
   const infos = await getMapInfos(projectPath);
 
   const target = infos[mapId];
   if (!target) {
     throw new Error(`Map ${mapId} does not exist in the map tree`);
   }
+
+  // Warn (don't block) on references that will dangle once the map is gone: the
+  // game start map and any direct Transfer Player (201) that targets it. Deletion
+  // still proceeds — this mirrors the documented hands-off stance, just surfaced.
+  const warnings = await danglingMapReferences(projectPath, mapId, infos);
 
   // Reparent the deleted map's direct children onto its parent so they aren't
   // orphaned (parentId pointing at a now-gone map).
@@ -287,7 +297,84 @@ export async function deleteMap(
   await commitChange(getDataPath(projectPath, 'MapInfos.json'), infos);
   await commitDelete(getMapPath(projectPath, mapId));
 
-  return { mapId, reparentedTo, reparentedChildren };
+  return {
+    mapId,
+    reparentedTo,
+    reparentedChildren,
+    ...(warnings.length ? { warnings } : {}),
+  };
+}
+
+/**
+ * Collect references that would dangle after `mapId` is deleted: the game start
+ * map (`System.startMapId`), and any *direct* Transfer Player (201) command —
+ * across every other map's events, common events, and troop pages — that targets
+ * it. Variable-designated transfers can't be resolved statically, so they're
+ * skipped. Read-only; each file loads fail-soft so a partial project can't break
+ * the delete.
+ */
+async function danglingMapReferences(
+  projectPath: string,
+  mapId: number,
+  infos: (MapInfo | null)[],
+): Promise<string[]> {
+  const warnings: string[] = [];
+
+  try {
+    const sys = await readJsonFile<{ startMapId?: number }>(
+      getDataPath(projectPath, 'System.json'),
+    );
+    if (sys.startMapId === mapId) {
+      warnings.push(
+        `map ${mapId} is the game start map (System.startMapId) — update it after deleting`,
+      );
+    }
+  } catch {
+    // System.json missing/unreadable — skip the start-map check.
+  }
+
+  const scanList = (list: unknown, where: string): void => {
+    if (!Array.isArray(list)) return;
+    list.forEach((cmd, i) => {
+      if (!cmd || !Array.isArray(cmd.parameters)) return;
+      if (cmd.code === 201 && cmd.parameters[0] === 0 && cmd.parameters[1] === mapId) {
+        warnings.push(`Transfer Player at ${where} / command ${i} targets map ${mapId}`);
+      }
+    });
+  };
+
+  for (const info of infos) {
+    if (!info || info.id === mapId) continue;
+    let map: MapData;
+    try {
+      map = await readJsonFile<MapData>(getMapPath(projectPath, info.id));
+    } catch {
+      continue;
+    }
+    for (const event of map.events ?? []) {
+      if (!event || !Array.isArray(event.pages)) continue;
+      event.pages.forEach((page, pi) =>
+        scanList(page?.list, `map ${info.id} / event ${event.id} / page ${pi}`),
+      );
+    }
+  }
+
+  const commonEvents = await readJsonArraySoft<{ id: number; list?: unknown }>(
+    getDataPath(projectPath, 'CommonEvents.json'),
+  );
+  commonEvents.forEach((ce) => {
+    if (ce) scanList(ce.list, `common event ${ce.id}`);
+  });
+
+  const troops = await readJsonArraySoft<{ id: number; pages?: { list?: unknown }[] }>(
+    getDataPath(projectPath, 'Troops.json'),
+  );
+  troops.forEach((troop) => {
+    if (!troop || !Array.isArray(troop.pages)) return;
+    troop.pages.forEach((page, pi) => scanList(page?.list, `troop ${troop.id} / page ${pi}`));
+  });
+
+  return warnings;
 }
 
 /** A single map-tree edit: reparent, reorder, rename, or expand/collapse a map. */
@@ -580,9 +667,7 @@ export async function updateMapEvent(
   // on load (the class of bug Phase 6.1 fixed for actors).
   const normalized: Partial<MapEvent> = { ...updates };
   if (updates.pages !== undefined) {
-    normalized.pages = updates.pages.map((page) =>
-      normalizeEventPage(page as Partial<EventPage>),
-    );
+    normalized.pages = updates.pages.map((page) => normalizeEventPage(page as Partial<EventPage>));
   }
 
   const nextX = normalized.x ?? map.events[eventId]!.x;
