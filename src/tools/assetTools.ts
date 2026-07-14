@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { basename, join } from 'path';
 import { listFiles } from '../utils/fileHandler.js';
 import { ToolDefinition } from '../registry.js';
+import { ValidationWarning } from '../validation/eventCommands.js';
 
 /**
  * The project asset kinds a caller can enumerate, mapped to their directory
@@ -72,6 +73,33 @@ export async function listAssets(projectPath: string, type: AssetType): Promise<
 
   const sorted = [...names].sort();
   return { type, count: sorted.length, names: sorted };
+}
+
+/**
+ * Warn (never throw) when an asset `name` isn't among the project's assets of the
+ * given type — a wrong filename is a silent runtime failure in the engine. Skips
+ * the check when the name is empty (no asset referenced) or the asset dir is
+ * empty/missing (nothing to validate against — e.g. a fixture project), so it
+ * can't emit false positives. Shared by the audio/character/battler name checks.
+ */
+export async function assetNameWarning(
+  projectPath: string,
+  type: AssetType,
+  name: string | undefined,
+  opts: { path: string; label: string; consequence: string },
+): Promise<ValidationWarning[]> {
+  if (!projectPath || !name) return [];
+  const { names } = await listAssets(projectPath, type);
+  if (names.length > 0 && !names.includes(name)) {
+    return [
+      {
+        path: opts.path,
+        code: undefined,
+        message: `${opts.label} "${name}" is not a known ${type} asset (${opts.consequence})`,
+      },
+    ];
+  }
+  return [];
 }
 
 export const assetToolDefinitions: ToolDefinition[] = [

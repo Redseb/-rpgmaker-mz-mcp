@@ -11,7 +11,7 @@ import {
 } from './mapTools.js';
 import { validateEvent, ValidationWarning } from '../validation/eventCommands.js';
 import { showText, ShowTextOptions } from '../events/commandBuilders.js';
-import { listAssets } from './assetTools.js';
+import { assetNameWarning } from './assetTools.js';
 
 /** Event trigger names ↔ the on-disk `trigger` code. */
 const TRIGGER_CODE = {
@@ -55,18 +55,11 @@ async function characterNameWarnings(
   projectPath: string,
   name: string | undefined,
 ): Promise<ValidationWarning[]> {
-  if (!projectPath || !name) return [];
-  const { names } = await listAssets(projectPath, 'characters');
-  if (names.length > 0 && !names.includes(name)) {
-    return [
-      {
-        path: 'image.characterName',
-        code: undefined,
-        message: `character "${name}" is not a known characters asset (a wrong filename fails silently at runtime)`,
-      },
-    ];
-  }
-  return [];
+  return assetNameWarning(projectPath, 'characters', name, {
+    path: 'image.characterName',
+    label: 'character',
+    consequence: 'a wrong filename fails silently at runtime',
+  });
 }
 
 /**

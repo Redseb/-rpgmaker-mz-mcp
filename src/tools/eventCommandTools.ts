@@ -67,7 +67,7 @@ import {
   PictureOrigin,
   BlendMode,
 } from '../events/commandBuilders.js';
-import { listAssets, AssetType } from './assetTools.js';
+import { AssetType, assetNameWarning } from './assetTools.js';
 
 /** Zod shape for a raw event command (used where callers pass builder output back). */
 const eventCommandShape = z.object({
@@ -332,26 +332,18 @@ function toColorTone(raw: unknown): ColorTone {
 
 /**
  * Warn (never throw) when an audio `name` isn't among the project's assets for that
- * channel. Skips the check when the asset dir is empty/missing (nothing to validate
- * against — e.g. a fixture project), so it can't emit false positives.
+ * channel. Thin wrapper over the shared {@link assetNameWarning}.
  */
 async function audioNameWarnings(
   projectPath: string,
   kind: AudioKind,
   name: string,
 ): Promise<ValidationWarning[]> {
-  if (!projectPath) return [];
-  const { names } = await listAssets(projectPath, kind as AssetType);
-  if (names.length > 0 && !names.includes(name)) {
-    return [
-      {
-        path: `play_audio ${kind}`,
-        code: undefined,
-        message: `audio "${name}" is not a known ${kind} asset (a wrong filename fails silently at runtime)`,
-      },
-    ];
-  }
-  return [];
+  return assetNameWarning(projectPath, kind as AssetType, name, {
+    path: `play_audio ${kind}`,
+    label: 'audio',
+    consequence: 'a wrong filename fails silently at runtime',
+  });
 }
 
 /** Zod shape for an actor target (fixed actor id / 0 = whole party, or a variable). */

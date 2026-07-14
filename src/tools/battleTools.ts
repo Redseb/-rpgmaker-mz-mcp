@@ -6,7 +6,7 @@ import { ToolDefinition } from '../registry.js';
 import { definedOnly } from '../utils/records.js';
 import { validateCommandList, ValidationWarning } from '../validation/eventCommands.js';
 import { firstMissingEnemyRef } from '../validation/createRefs.js';
-import { listAssets } from './assetTools.js';
+import { assetNameWarning } from './assetTools.js';
 
 /**
  * Blank enemy mirroring what the RPG Maker MZ editor writes for a freshly-created
@@ -86,18 +86,11 @@ async function battlerNameWarnings(
   projectPath: string,
   name: string | undefined,
 ): Promise<ValidationWarning[]> {
-  if (!projectPath || !name) return [];
-  const { names } = await listAssets(projectPath, 'enemies');
-  if (names.length > 0 && !names.includes(name)) {
-    return [
-      {
-        path: 'battlerName',
-        code: undefined,
-        message: `battler "${name}" is not a known enemies asset (a wrong filename shows a blank sprite in battle)`,
-      },
-    ];
-  }
-  return [];
+  return assetNameWarning(projectPath, 'enemies', name, {
+    path: 'battlerName',
+    label: 'battler',
+    consequence: 'a wrong filename shows a blank sprite in battle',
+  });
 }
 
 /** Attach warn-by-default battler-asset validation to an enemy-write response. */
