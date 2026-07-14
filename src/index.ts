@@ -67,6 +67,11 @@ async function runTool(
       ...(commit.deleted ? { deleted: true } : {}),
       diff: commit.diff,
     })),
+    // The handler's return value (e.g. `{ event, warnings }`) — surfaced so a
+    // dry-run preview shows validation warnings that would otherwise be
+    // discarded (the documented dry-run gap). Omitted when the handler returns
+    // nothing.
+    ...(result === undefined ? {} : { wouldReturn: result }),
   };
 }
 

@@ -579,6 +579,22 @@ export async function resizeMap(
     }
   }
 
+  // If this is the game's start map, shrinking can push the player's starting
+  // position off the grid — the party would spawn out of bounds. Read System.json
+  // fail-soft (a bare fixture may not have startX/Y); never throw over it.
+  try {
+    const sys = await readJsonFile<{ startMapId?: number; startX?: number; startY?: number }>(
+      getDataPath(projectPath, 'System.json'),
+    );
+    if (sys.startMapId === mapId && ((sys.startX ?? 0) >= width || (sys.startY ?? 0) >= height)) {
+      warnings.push(
+        `Start position (${sys.startX ?? 0},${sys.startY ?? 0}) on this start map is now outside the ${width}x${height} map bounds — update it with update_starting_position`,
+      );
+    }
+  } catch {
+    // System.json missing/unreadable — skip the start-position check.
+  }
+
   const mapPath = getMapPath(projectPath, mapId);
   await commitChange(mapPath, map);
 
@@ -782,13 +798,60 @@ export async function createMapEvent(
 }
 
 /**
- * Delete an event from a map
+ * Scan a map's remaining events for command parameters that reference the given
+ * (about-to-be-deleted) event id, so the caller can be warned about pages that
+ * will point at a now-gone event. Covers the commands whose parameter carries an
+ * event id: Set Event Location (203), Show Animation (212), Show Balloon (213),
+ * and forced Set Movement Route (205). For 212/213/205 the character id follows
+ * the -1 player / 0 this event / N event id convention, so only a value === the
+ * deleted id **and > 0** is a real reference. Pure (no I/O); warn-only.
+ */
+export function eventReferenceWarnings(events: (MapEvent | null)[], deletedId: number): string[] {
+  const warnings: string[] = [];
+  for (const event of events) {
+    if (!event || event.id === deletedId || !Array.isArray(event.pages)) continue;
+    event.pages.forEach((page, pi) => {
+      const list = page?.list;
+      if (!Array.isArray(list)) return;
+      for (const cmd of list) {
+        if (!cmd || !Array.isArray(cmd.parameters)) continue;
+        // Set Event Location: parameters[0] is the moved event's id (>0).
+        // 212/213/205: parameters[0] is a characterId (-1 player/0 this event/N).
+        const target =
+          cmd.code === 203
+            ? cmd.parameters[0]
+            : cmd.code === 212 || cmd.code === 213 || cmd.code === 205
+              ? cmd.parameters[0]
+              : undefined;
+        if (target === deletedId && deletedId > 0) {
+          const what =
+            cmd.code === 203
+              ? 'Set Event Location'
+              : cmd.code === 212
+                ? 'Show Animation'
+                : cmd.code === 213
+                  ? 'Show Balloon'
+                  : 'Set Movement Route';
+          warnings.push(
+            `Event ${event.id} "${event.name}" page ${pi} has a ${what} command (code ${cmd.code}) referencing deleted event ${deletedId}`,
+          );
+        }
+      }
+    });
+  }
+  return warnings;
+}
+
+/**
+ * Delete an event from a map. Warns (never blocks) when other events' pages still
+ * reference the deleted event id via Set Event Location / Show Animation / Show
+ * Balloon / forced Set Movement Route (see {@link eventReferenceWarnings}).
  */
 export async function deleteMapEvent(
   projectPath: string,
   mapId: number,
   eventId: number,
-): Promise<boolean> {
+): Promise<{ success: boolean; warnings?: string[] }> {
   const map = await getMap(projectPath, mapId);
 
   // Mutators throw on a missing target (consistent with delete_map / update_map_event);
@@ -797,12 +860,16 @@ export async function deleteMapEvent(
     throw new Error(`Event ${eventId} not found on map ${mapId}`);
   }
 
+  // Scan the other events BEFORE nulling the slot so the reference warnings see
+  // the full event set (they already skip the deleted id anyway).
+  const warnings = eventReferenceWarnings(map.events, eventId);
+
   map.events[eventId] = null;
 
   const mapPath = getMapPath(projectPath, mapId);
   await commitChange(mapPath, map);
 
-  return true;
+  return warnings.length > 0 ? { success: true, warnings } : { success: true };
 }
 
 /**
@@ -868,6 +935,50 @@ export async function getMapDimensions(
 }
 
 /**
+ * Read the raw tile ids in a rectangular window of one z-layer — a token-cheap
+ * windowed alternative to {@link getMap} for inspecting part of a big painted map.
+ * Returns `tiles` as a 2D array (rows top→bottom, each left→right). The rectangle
+ * must lie fully within the map bounds (throws otherwise). Uses the pure
+ * {@link tileIndex} helper for the flat-array index math. Read-only.
+ */
+export async function getMapRegion(
+  projectPath: string,
+  mapId: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  layer: number = 0,
+): Promise<{
+  mapId: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  layer: number;
+  tiles: number[][];
+}> {
+  const map = await getMap(projectPath, mapId);
+
+  if (x < 0 || y < 0 || x + width > map.width || y + height > map.height) {
+    throw new Error(
+      `Region (${x}, ${y}) ${width}x${height} is out of bounds for the ${map.width}x${map.height} map`,
+    );
+  }
+
+  const tiles: number[][] = [];
+  for (let row = 0; row < height; row++) {
+    const cols: number[] = [];
+    for (let col = 0; col < width; col++) {
+      cols.push(map.data[tileIndex(map.width, map.height, x + col, y + row, layer)]);
+    }
+    tiles.push(cols);
+  }
+
+  return { mapId, x, y, width, height, layer, tiles };
+}
+
+/**
  * Set map tile at specific position
  */
 export async function setMapTile(
@@ -913,9 +1024,57 @@ export function tileIndex(
 export const mapToolDefinitions: ToolDefinition[] = [
   {
     name: 'get_map',
-    description: 'Get map data by ID',
-    inputSchema: { mapId: z.number().describe('The ID of the map to retrieve') },
-    handler: (ctx, args) => getMap(ctx.projectPath, args.mapId),
+    description:
+      'Get map data by ID. The tile `data` array can be huge on a painted map (width*height*6 ints) and blow the MCP token limit, so pass includeData:false to omit it (you get dataTileCount instead) and read tiles with get_map_region when needed. includeData defaults to true for backward compatibility.',
+    inputSchema: {
+      mapId: z.number().describe('The ID of the map to retrieve'),
+      includeData: z
+        .boolean()
+        .optional()
+        .describe(
+          'Include the full tile `data` array (default true). Pass false to omit it (returns dataTileCount) and avoid the token cost of a big painted map.',
+        ),
+    },
+    handler: async (ctx, args) => {
+      const map = await getMap(ctx.projectPath, args.mapId);
+      if (args.includeData === false) {
+        // Drop the large tile `data` array; report its length instead. Mirrors
+        // create_map/update_map's dataTileCount echo (P2-6) so clients can inspect
+        // a map's shape without paying for every tile (read tiles via get_map_region).
+        const { data, ...mapWithoutData } = map;
+        return { ...mapWithoutData, dataTileCount: data.length };
+      }
+      return map;
+    },
+  },
+  {
+    name: 'get_map_region',
+    description:
+      'Read the raw tile ids in a rectangular window of one map layer — a token-cheap alternative to get_map for inspecting part of a painted map. Returns `tiles` as a 2D array (rows top→bottom, each left→right) of raw engine tile ids. The rectangle must lie fully within the map bounds (throws otherwise). layer defaults to 0 (see set_map_tile for the z-layer meanings).',
+    inputSchema: {
+      mapId: z.number().int().positive().describe('The ID of the map'),
+      x: z.number().int().min(0).describe('Left edge of the window (tile column)'),
+      y: z.number().int().min(0).describe('Top edge of the window (tile row)'),
+      width: z.number().int().positive().describe('Window width in tiles'),
+      height: z.number().int().positive().describe('Window height in tiles'),
+      layer: z
+        .number()
+        .int()
+        .min(0)
+        .max(5)
+        .optional()
+        .describe('Z-layer 0-5 (0-1 lower, 2-3 upper, 4 shadow, 5 region); default 0'),
+    },
+    handler: (ctx, args) =>
+      getMapRegion(
+        ctx.projectPath,
+        args.mapId,
+        args.x,
+        args.y,
+        args.width,
+        args.height,
+        args.layer,
+      ),
   },
   {
     name: 'get_map_infos',
@@ -1188,8 +1347,6 @@ export const mapToolDefinitions: ToolDefinition[] = [
       mapId: z.number().describe('The ID of the map'),
       eventId: z.number().describe('The ID of the event'),
     },
-    handler: async (ctx, args) => ({
-      success: await deleteMapEvent(ctx.projectPath, args.mapId, args.eventId),
-    }),
+    handler: (ctx, args) => deleteMapEvent(ctx.projectPath, args.mapId, args.eventId),
   },
 ];
