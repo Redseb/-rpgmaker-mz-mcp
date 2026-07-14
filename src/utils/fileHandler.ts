@@ -32,19 +32,28 @@ export async function writeJsonFile(filePath: string, data: any): Promise<void> 
 }
 
 /**
- * Read a 1-indexed database array file, failing soft: a missing or malformed
- * file yields `[]` rather than throwing. Used by create-time reference checks
- * that must degrade to "can't verify" (skip) instead of breaking on a project
- * (or test fixture) that lacks the target file.
+ * Read a 1-indexed database array file, failing soft only on a *missing* file
+ * (ENOENT → `[]`). Used by create-time reference checks that must degrade to
+ * "can't verify" (skip) instead of breaking on a project (or test fixture) that
+ * lacks the target file.
+ *
+ * A *corrupted* (present but malformed) file is a real error and throws — swallowing
+ * it would silently skip reference/troop validation on a broken project instead of
+ * surfacing the corruption. A parsed non-array value still yields `[]` (a wrong-typed
+ * file is treated as "no records" rather than crashing callers that expect an array).
  */
 export async function readJsonArraySoft<T>(filePath: string): Promise<(T | null)[]> {
+  let content: string;
   try {
-    const content = await readFile(filePath, 'utf-8');
-    const parsed = JSON.parse(content);
-    return Array.isArray(parsed) ? (parsed as (T | null)[]) : [];
-  } catch {
-    return [];
+    content = await readFile(filePath, 'utf-8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return [];
+    }
+    throw error;
   }
+  const parsed = JSON.parse(content);
+  return Array.isArray(parsed) ? (parsed as (T | null)[]) : [];
 }
 
 /**
