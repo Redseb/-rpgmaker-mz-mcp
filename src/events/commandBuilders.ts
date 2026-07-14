@@ -1,6 +1,24 @@
 import { EventCommand } from '../utils/types.js';
 
 /**
+ * Splice built commands into a command list before its code-0 end marker (or at
+ * `position` when it's a valid in-range index). Shared by every insert path
+ * (map event page, common event, troop page, single-command add) so the "insert
+ * before the terminator" rule lives in one place. Mutates `list` in place.
+ */
+export function spliceIntoList(
+  list: EventCommand[],
+  commands: EventCommand[],
+  position?: number,
+): void {
+  const insertAt =
+    position !== undefined && position >= 0 && position < list.length - 1
+      ? position
+      : list.length - 1; // before the end-of-list command (code 0)
+  list.splice(insertAt, 0, ...commands);
+}
+
+/**
  * Pure builders for common vanilla RPG Maker MZ event commands. Each returns the
  * exact `EventCommand[]` sequence the editor writes on disk (validated against
  * real editor output), ready to splice into an event page's `list` via

@@ -12,6 +12,7 @@ import { getMap, withValidation } from './mapTools.js';
 import { getCommonEvents } from './commonEventTools.js';
 import { getTroops } from './battleTools.js';
 import {
+  spliceIntoList,
   showText,
   showChoices,
   conditionalBranch,
@@ -124,19 +125,6 @@ export async function insertEventCommands(
 
   await commitChange(getMapPath(projectPath, mapId), map);
   return event;
-}
-
-/**
- * Splice built commands into a command list before its code-0 end marker (or at
- * `position` when it's a valid in-range index). Shared by every insert path so
- * the "insert before the terminator" rule lives in one place.
- */
-function spliceIntoList(list: EventCommand[], commands: EventCommand[], position?: number): void {
-  const insertAt =
-    position !== undefined && position >= 0 && position < list.length - 1
-      ? position
-      : list.length - 1; // before the end-of-list command (code 0)
-  list.splice(insertAt, 0, ...commands);
 }
 
 /**

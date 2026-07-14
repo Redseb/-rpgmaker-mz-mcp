@@ -18,6 +18,7 @@ import {
 } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 import { validateEvent, ValidationWarning } from '../validation/eventCommands.js';
+import { spliceIntoList } from '../events/commandBuilders.js';
 import { layeredPassability } from '../tiles/tileFlags.js';
 import { refExists } from '../validation/references.js';
 
@@ -843,15 +844,8 @@ export async function addEventCommand(
     throw new Error(`Page ${pageIndex} not found on event ${eventId}`);
   }
 
-  const commandList = event.pages[pageIndex].list;
-
-  if (position !== undefined && position >= 0 && position < commandList.length - 1) {
-    // Insert at specific position (before the end command)
-    commandList.splice(position, 0, command);
-  } else {
-    // Add before the end command (code 0)
-    commandList.splice(commandList.length - 1, 0, command);
-  }
+  // add_event_command is the single-command case of the shared splice path.
+  spliceIntoList(event.pages[pageIndex].list, [command], position);
 
   const mapPath = getMapPath(projectPath, mapId);
   await commitChange(mapPath, map);
