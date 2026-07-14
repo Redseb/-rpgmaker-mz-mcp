@@ -561,7 +561,23 @@ export async function updateMapEvent(
     throw new Error(`Event ${eventId} not found on map ${mapId}`);
   }
 
-  map.events[eventId] = { ...map.events[eventId]!, ...updates, id: eventId };
+  // Normalize any supplied pages onto a blank page (same as create_map_event):
+  // a partial page taken raw would be missing engine-required fields and crash
+  // on load (the class of bug Phase 6.1 fixed for actors).
+  const normalized: Partial<MapEvent> = { ...updates };
+  if (updates.pages !== undefined) {
+    normalized.pages = updates.pages.map((page) =>
+      normalizeEventPage(page as Partial<EventPage>),
+    );
+  }
+
+  const nextX = normalized.x ?? map.events[eventId]!.x;
+  const nextY = normalized.y ?? map.events[eventId]!.y;
+  if (nextX < 0 || nextX >= map.width || nextY < 0 || nextY >= map.height) {
+    throw new Error(`Event position (${nextX}, ${nextY}) is out of map bounds`);
+  }
+
+  map.events[eventId] = { ...map.events[eventId]!, ...normalized, id: eventId };
 
   const mapPath = getMapPath(projectPath, mapId);
   await commitChange(mapPath, map);
