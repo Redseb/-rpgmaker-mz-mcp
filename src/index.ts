@@ -5,6 +5,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { basename } from 'path';
+import { readFileSync } from 'fs';
 
 import { validateProjectPath } from './utils/fileHandler.js';
 import { ToolContext, ToolDefinition, buildRegistry, schemaFor } from './registry.js';
@@ -21,6 +22,20 @@ import { allToolDefinitions } from './tools/allTools.js';
  */
 
 const PROJECT_PATH = process.env.RPGMAKER_PROJECT_PATH || '';
+
+/**
+ * Advertised MCP server version, read from package.json so it tracks releases
+ * instead of drifting from a hardcoded string. Resolved relative to this module
+ * (dist/index.js → ../package.json). Falls back to '0.0.0' if unreadable.
+ */
+function serverVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+    return typeof pkg.version === 'string' ? pkg.version : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
 /**
  * Run a tool. Mutating tools execute inside a commit context so that, when
@@ -56,7 +71,7 @@ async function runTool(
 }
 
 function buildServer(projectPath: string): McpServer {
-  const server = new McpServer({ name: 'rpgmaker-mz-server', version: '1.0.0' });
+  const server = new McpServer({ name: 'rpgmaker-mz-server', version: serverVersion() });
 
   // Fail loudly on duplicate tool names before wiring anything up.
   buildRegistry(allToolDefinitions);
