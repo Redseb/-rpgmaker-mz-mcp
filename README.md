@@ -4,7 +4,7 @@
 
 # RPG Maker MZ MCP Server
 
-[![CI](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml)
 [![Tools](https://img.shields.io/badge/tools-118-e94560.svg)](#available-tools)
 [![MCP](https://img.shields.io/badge/MCP-stdio-e94560.svg)](https://modelcontextprotocol.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
@@ -16,8 +16,6 @@
 _"Add a town under the world map, paint it with grass, and drop in a shopkeeper who sells potions"_ → done, in-project, no editor clicks.
 
 </div>
-
-> **Fork notice.** This is a fork of [k4zuki0539/-rpgmaker-mz-mcp](https://github.com/k4zuki0539/-rpgmaker-mz-mcp) (MIT), extended well beyond the original CRUD scaffolding into full vanilla level-design and game-logic authoring. See [Capabilities](#capabilities) for the full picture.
 
 ## Quick start
 
@@ -341,6 +339,10 @@ rpgmaker-mz-mcp/
 - Writes JSON files directly; the editor must be closed to avoid conflicts.
 - Plugin-specific data structures are supported through a narrow, extensible allowlist — arbitrary plugin params pass through unchecked.
 - Animations (`Animations.json`, Effekseer-based) are not edited by this server.
+
+## Acknowledgements
+
+This project started life as a fork of [k4zuki0539/-rpgmaker-mz-mcp](https://github.com/k4zuki0539/-rpgmaker-mz-mcp) (MIT), which provided the original CRUD scaffolding. It has since grown well beyond that starting point — into full vanilla level-design and game-logic authoring (see [Capabilities](#capabilities)) — and is now maintained as its own project. Thanks to the original author for the foundation.
 
 ## License
 
