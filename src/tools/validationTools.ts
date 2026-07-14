@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ToolDefinition } from '../registry.js';
 import { getMap, getMapInfos, getMapEvent } from './mapTools.js';
 import { validateEvent, validateEvents, ValidationWarning } from '../validation/eventCommands.js';
-import { readJsonFile, getDataPath } from '../utils/fileHandler.js';
+import { readJsonFile, readJsonArraySoft, getDataPath } from '../utils/fileHandler.js';
 import { checkReferences, ProjectData, ReferenceWarning } from '../validation/references.js';
 import {
   checkAssets,
@@ -72,13 +72,12 @@ export async function validateProjectTool(projectPath: string): Promise<{
   return { ok: warnings.length === 0, mapsChecked, warnings };
 }
 
-/** Read a 1-indexed database array, failing soft to `[]` if the file is absent. */
+/**
+ * Read a 1-indexed database array by filename, failing soft to `[]` if the file is
+ * absent. Thin (projectPath, file) convenience over the shared {@link readJsonArraySoft}.
+ */
 async function loadArray<T>(projectPath: string, file: string): Promise<(T | null)[]> {
-  try {
-    return await readJsonFile<(T | null)[]>(getDataPath(projectPath, file));
-  } catch {
-    return [];
-  }
+  return readJsonArraySoft<T>(getDataPath(projectPath, file));
 }
 
 /**
