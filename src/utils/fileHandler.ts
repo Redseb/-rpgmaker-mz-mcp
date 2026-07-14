@@ -9,7 +9,9 @@ export async function readJsonFile<T>(filePath: string): Promise<T> {
     const content = await readFile(filePath, 'utf-8');
     return JSON.parse(content) as T;
   } catch (error) {
-    throw new Error(`Failed to read JSON file ${filePath}: ${error}`);
+    // Unwrap the underlying Error's message so we don't nest `Error: …: Error: …`.
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read JSON file ${filePath}: ${detail}`);
   }
 }
 

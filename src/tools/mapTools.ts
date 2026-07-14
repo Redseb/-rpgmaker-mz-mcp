@@ -110,7 +110,14 @@ export async function actionButtonReachabilityWarnings(
  */
 export async function getMap(projectPath: string, mapId: number): Promise<MapData> {
   const mapPath = getMapPath(projectPath, mapId);
-  return await readJsonFile<MapData>(mapPath);
+  try {
+    return await readJsonFile<MapData>(mapPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT' || /ENOENT/.test(String(error))) {
+      throw new Error(`Map ${mapId} does not exist`);
+    }
+    throw error;
+  }
 }
 
 /**
