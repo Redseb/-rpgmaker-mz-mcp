@@ -17,6 +17,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "sync:tools": "node scripts/sync-tool-count.mjs",
+    "sync:tools:check": "node scripts/sync-tool-count.mjs --check",
     "prepare": "npm run build"
   },
   "keywords": [

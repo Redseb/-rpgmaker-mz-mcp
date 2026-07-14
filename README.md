@@ -5,19 +5,33 @@
 # RPG Maker MZ MCP Server
 
 [![CI](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/-rpgmaker-mz-mcp/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-3fa796.svg)](#license)
-[![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-3fa796.svg)](package.json)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
+[![Tools](https://img.shields.io/badge/tools-118-e94560.svg)](#available-tools)
 [![MCP](https://img.shields.io/badge/MCP-stdio-e94560.svg)](https://modelcontextprotocol.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
+[![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-3fa796.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3fa796.svg)](#license)
 
-**112 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+**118 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+
+_"Add a town under the world map, paint it with grass, and drop in a shopkeeper who sells potions"_ → done, in-project, no editor clicks.
 
 </div>
 
 > **Fork notice.** This is a fork of [k4zuki0539/-rpgmaker-mz-mcp](https://github.com/k4zuki0539/-rpgmaker-mz-mcp) (MIT), extended well beyond the original CRUD scaffolding into full vanilla level-design and game-logic authoring. See [Capabilities](#capabilities) for the full picture.
 
+## Quick start
+
+```bash
+npm install && npm run build
+export RPGMAKER_PROJECT_PATH=/path/to/your/rpgmaker/project   # dir with game.rmmzproject + data/
+npm start
+```
+
+Then point any MCP client at `dist/index.js` (see [Configuration](#configuration)) and ask it to build your game. New here? Read [SETUP.md](SETUP.md) for the full walkthrough and [EXAMPLES.md](EXAMPLES.md) for end-to-end recipes.
+
 ## Contents
 
+- [Quick start](#quick-start)
 - [Capabilities](#capabilities)
 - [How it fits together](#how-it-fits-together)
 - [Installation](#installation)
@@ -102,7 +116,7 @@ Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_
 
 ## Available tools
 
-All 112 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)).
+All 118 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)).
 
 <details>
 <summary><strong>Expand the full tool reference</strong></summary>
@@ -279,10 +293,15 @@ npm run lint          # ESLint
 npm run lint:fix      # ESLint with autofix
 npm run format        # Format with Prettier
 npm run format:check  # Check formatting (used in CI)
-npm test              # Vitest (304 tests)
+npm test              # Vitest (390 tests)
+npm run sync:tools    # Re-stamp the tool count into the README + SVGs (see below)
 ```
 
-CI runs lint, format check, tests, and build on every push and pull request (see `.github/workflows/ci.yml`).
+CI runs lint, format check, tool-count sync check, tests, and build on every push and pull request (see `.github/workflows/ci.yml`).
+
+### Keeping the tool count in sync
+
+The advertised tool count lives in a few human-facing spots — the README prose and badge, and the two SVGs in `assets/`. `npm run sync:tools` counts the real tools from `src/tools/` and re-stamps all of them, so bumping the number after adding a tool is one command. `npm run sync:tools:check` (run in CI) fails if any spot is stale.
 
 ## Project structure
 
@@ -301,6 +320,9 @@ rpgmaker-mz-mcp/
 │   ├── validation/           # Known-command tables + event/move/plugin/reference validators
 │   └── utils/                # File I/O, the commit choke point, and RPG Maker MZ types
 ├── test/                     # Vitest suite
+├── scripts/
+│   └── sync-tool-count.mjs   # Re-stamps the tool count into the README + SVGs
+├── assets/                   # Banner + architecture SVGs
 ├── .claude/skills/
 │   └── tileset-catalog/      # Vision catalog-bootstrap skill for custom tilesets
 ├── dist/                     # Compiled JavaScript (gitignored)

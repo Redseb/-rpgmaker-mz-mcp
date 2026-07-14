@@ -23,9 +23,9 @@ export default tseslint.config(
     },
   },
   {
-    // Skill tooling (tileset-catalog): standalone Node scripts, not part
-    // of the server build — give them Node globals so they lint cleanly.
-    files: ['.claude/skills/**/*.mjs'],
+    // Standalone Node maintenance scripts (skill tooling + repo scripts/), not
+    // part of the server build — give them Node globals so they lint cleanly.
+    files: ['.claude/skills/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: { process: 'readonly', Buffer: 'readonly', console: 'readonly' },
     },
