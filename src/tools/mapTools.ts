@@ -31,7 +31,7 @@ const DEFAULT_MAP_HEIGHT = 13;
  * the caller if the resulting event looks structurally off. Warnings are only
  * included when present, so clean writes keep a tidy `{ event }` response.
  */
-function withValidation(event: MapEvent): {
+export function withValidation(event: MapEvent): {
   event: MapEvent;
   warnings?: ReturnType<typeof validateEvent>['warnings'];
 } {

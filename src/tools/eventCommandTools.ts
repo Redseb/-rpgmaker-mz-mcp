@@ -1,14 +1,14 @@
 import { z } from 'zod';
-import { readJsonFile, getMapPath, getDataPath } from '../utils/fileHandler.js';
+import { getMapPath, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
-import { MapData, MapEvent, EventCommand } from '../utils/types.js';
+import { MapEvent, EventCommand } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 import {
-  validateEvent,
   validateCommandList,
   textLineWidthWarnings,
   ValidationWarning,
 } from '../validation/eventCommands.js';
+import { getMap, withValidation } from './mapTools.js';
 import { getCommonEvents } from './commonEventTools.js';
 import { getTroops } from './battleTools.js';
 import {
@@ -93,10 +93,6 @@ function asCommands(raw: unknown): EventCommand[] {
 function asCommandGroups(raw: unknown): EventCommand[][] | undefined {
   if (!Array.isArray(raw)) return undefined;
   return raw.map((group) => asCommands(group));
-}
-
-async function getMap(projectPath: string, mapId: number): Promise<MapData> {
-  return await readJsonFile<MapData>(getMapPath(projectPath, mapId));
 }
 
 /**
@@ -195,12 +191,6 @@ export async function appendEventCommands(
   const warnings = validateCommandList(page.list, `troop ${troop.id} / page ${opts.pageIndex}`);
   const result = { target, id: troop.id, list: page.list };
   return warnings.length > 0 ? { ...result, warnings } : result;
-}
-
-/** Build the warn-by-default response for a mutating event write. */
-function withValidation(event: MapEvent): { event: MapEvent; warnings?: ValidationWarning[] } {
-  const { warnings } = validateEvent(event);
-  return warnings.length > 0 ? { event, warnings } : { event };
 }
 
 /** Zod shape for a Conditional Branch condition (validated further in the builder). */
