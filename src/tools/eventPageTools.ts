@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { readJsonFile, getMapPath } from '../utils/fileHandler.js';
+import { readJsonFile, readJsonArraySoft, getDataPath, getMapPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
 import { MapData, MapEvent, EventImage, MoveRoute, EventCommand } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
@@ -10,7 +10,20 @@ import {
   summarizeCreatedEvent,
 } from './mapTools.js';
 import { validateEvent, ValidationWarning } from '../validation/eventCommands.js';
-import { showText, ShowTextOptions } from '../events/commandBuilders.js';
+import {
+  showText,
+  ShowTextOptions,
+  changeGold,
+  changeItems,
+  changeWeapons,
+  changeArmors,
+  controlSelfSwitch,
+  transferPlayer,
+  GainOperand,
+  TransferDirection,
+  TransferFade,
+} from '../events/commandBuilders.js';
+import { refExists } from '../validation/references.js';
 import { assetNameWarning } from './assetTools.js';
 
 /** Event trigger names ↔ the on-disk `trigger` code. */
@@ -220,6 +233,219 @@ export async function createNpc(
   return await createMapEvent(projectPath, mapId, { name, note: '', x, y, pages: [page] });
 }
 
+// --- One-shot idiom builders: chests & transfers ----------------------------
+
+/** What a chest hands the party when opened. */
+export type ChestKind = 'item' | 'weapon' | 'armor' | 'gold';
+
+/** The db file + label backing each non-gold chest kind. */
+const CHEST_REF: Record<Exclude<ChestKind, 'gold'>, { file: string; label: string }> = {
+  item: { file: 'Items.json', label: 'item' },
+  weapon: { file: 'Weapons.json', label: 'weapon' },
+  armor: { file: 'Armors.json', label: 'armor' },
+};
+
+/** Options for `create_chest` beyond the required position/contents. */
+export interface CreateChestOptions {
+  name?: string;
+  id?: number;
+  amount?: number;
+  characterName?: string;
+  characterIndex?: number;
+  closedDirection?: number;
+  openedDirection?: number;
+  text?: string[];
+  selfSwitch?: 'A' | 'B' | 'C' | 'D';
+}
+
+/** The Change Gold/Items/Weapons/Armors command that pays out a chest's contents. */
+function chestGainCommand(kind: ChestKind, id: number, amount: number): EventCommand {
+  const operand: GainOperand = { type: 'constant', value: amount };
+  switch (kind) {
+    case 'gold':
+      return changeGold('increase', operand);
+    case 'item':
+      return changeItems(id, 'increase', operand);
+    case 'weapon':
+      return changeWeapons(id, 'increase', operand);
+    case 'armor':
+      return changeArmors(id, 'increase', operand);
+  }
+}
+
+/**
+ * One-shot treasure-chest builder: the two-page self-switch idiom, complete and
+ * correct, in a single call.
+ *
+ * - **Page 1** (closed chest): action-button, priority `same` so it fires when the
+ *   player *faces* it, gives the contents, then flips its self switch on.
+ * - **Page 2** (opened chest): gated on that self switch, shows the opened graphic
+ *   and does nothing — so the chest can never be looted twice.
+ *
+ * The RTP `!Chest` sheet packs the open/closed states on the *direction* rows of one
+ * character block (down = closed, left/right = mid-open, up = fully open), which is
+ * why the two pages differ only by `direction`.
+ */
+export async function createChest(
+  projectPath: string,
+  mapId: number,
+  x: number,
+  y: number,
+  kind: ChestKind,
+  options: CreateChestOptions = {},
+): Promise<MapEvent> {
+  const amount = options.amount ?? 1;
+  const id = options.id ?? 0;
+  if (kind !== 'gold' && id <= 0) {
+    throw new Error(`create_chest: an \`id\` is required for a ${kind} chest`);
+  }
+
+  // Reject a chest paying out a record that doesn't exist — the create-time throw
+  // convention (matching create_item / create_enemy), not an after-the-fact audit.
+  if (kind !== 'gold') {
+    const { file, label } = CHEST_REF[kind];
+    const records = await readJsonArraySoft(getDataPath(projectPath, file));
+    if (records.length > 0 && !refExists(records, id)) {
+      throw new Error(`create_chest: ${label} ${id} does not exist`);
+    }
+  }
+
+  const channel = options.selfSwitch ?? 'A';
+  const characterName = options.characterName ?? '';
+  const characterIndex = options.characterIndex ?? 0;
+  const pattern = characterName ? 1 : 0;
+
+  const openList: EventCommand[] = [
+    ...(options.text && options.text.length > 0 ? showText(options.text) : []),
+    chestGainCommand(kind, id, amount),
+    controlSelfSwitch(channel, 'on'),
+  ];
+
+  const closedPage = blankEventPage();
+  closedPage.image = {
+    characterName,
+    characterIndex,
+    direction: options.closedDirection ?? DIRECTION_CODE.down,
+    pattern,
+    tileId: 0,
+  };
+  closedPage.trigger = TRIGGER_CODE.action_button;
+  // Priority `same` is load-bearing: an action-button event on a `below` page only
+  // fires when the player stands *on* it, which a solid chest never allows.
+  closedPage.priorityType = PRIORITY_CODE.same;
+  closedPage.list = terminated(openList);
+
+  const openedPage = blankEventPage();
+  openedPage.conditions = {
+    ...openedPage.conditions,
+    selfSwitchValid: true,
+    selfSwitchCh: channel,
+  };
+  openedPage.image = {
+    characterName,
+    characterIndex,
+    direction: options.openedDirection ?? DIRECTION_CODE.up,
+    pattern,
+    tileId: 0,
+  };
+  openedPage.trigger = TRIGGER_CODE.action_button;
+  openedPage.priorityType = PRIORITY_CODE.same;
+
+  return await createMapEvent(projectPath, mapId, {
+    name: options.name ?? 'Chest',
+    note: '',
+    x,
+    y,
+    pages: [closedPage, openedPage],
+  });
+}
+
+/** How the player activates a transfer event. */
+export type TransferIdiom = 'action_button' | 'player_touch';
+
+/** Options for `create_transfer` beyond the required source/target positions. */
+export interface CreateTransferOptions {
+  name?: string;
+  idiom?: TransferIdiom;
+  direction?: TransferDirection;
+  fade?: TransferFade;
+  characterName?: string;
+  characterIndex?: number;
+}
+
+/**
+ * One-shot map-transfer builder covering the two idioms that actually work:
+ *
+ * - **`action_button`** (default): a priority-`same` event the player faces and
+ *   presses — the right shape for a solid landmark (building, dungeon mouth, door).
+ * - **`player_touch`**: an invisible priority-`below` doormat the player steps onto —
+ *   for interior exits and map-edge gaps.
+ *
+ * Throws if the destination map doesn't exist, and warns when the destination tile
+ * is outside that map's bounds (the player would land nowhere).
+ */
+export async function createTransfer(
+  projectPath: string,
+  mapId: number,
+  x: number,
+  y: number,
+  targetMapId: number,
+  targetX: number,
+  targetY: number,
+  options: CreateTransferOptions = {},
+): Promise<{ event: MapEvent; warnings: ValidationWarning[] }> {
+  const mapInfos = await readJsonArraySoft(getDataPath(projectPath, 'MapInfos.json'));
+  if (mapInfos.length > 0 && !refExists(mapInfos, targetMapId)) {
+    throw new Error(`create_transfer: target map ${targetMapId} does not exist`);
+  }
+
+  const warnings: ValidationWarning[] = [];
+  try {
+    const target = await getMap(projectPath, targetMapId);
+    if (targetX < 0 || targetY < 0 || targetX >= target.width || targetY >= target.height) {
+      warnings.push({
+        path: 'targetX/targetY',
+        message: `destination (${targetX}, ${targetY}) is outside map ${targetMapId}'s ${target.width}x${target.height} bounds — the player would land off-map`,
+      });
+    }
+  } catch {
+    // Unreadable target map file: the MapInfos check above already covers the
+    // "map doesn't exist" case, so fail soft rather than block the write.
+  }
+
+  const idiom = options.idiom ?? 'action_button';
+  const characterName = options.characterName ?? '';
+
+  const page = blankEventPage();
+  page.image = {
+    characterName,
+    characterIndex: options.characterIndex ?? 0,
+    direction: DIRECTION_CODE.down,
+    pattern: characterName ? 1 : 0,
+    tileId: 0,
+  };
+  page.trigger = idiom === 'player_touch' ? TRIGGER_CODE.player_touch : TRIGGER_CODE.action_button;
+  // An action-button transfer is meant to fire from the player *facing* a solid
+  // landmark, which needs `same`; a doormat is walked onto, so it stays `below`.
+  page.priorityType = idiom === 'player_touch' ? PRIORITY_CODE.below : PRIORITY_CODE.same;
+  page.list = terminated([
+    transferPlayer(targetMapId, targetX, targetY, {
+      direction: options.direction ?? 'retain',
+      fade: options.fade ?? 'black',
+    }),
+  ]);
+
+  const event = await createMapEvent(projectPath, mapId, {
+    name: options.name ?? 'Transfer',
+    note: '',
+    x,
+    y,
+    pages: [page],
+  });
+
+  return { event, warnings };
+}
+
 /** Build the warn-by-default response for an event write, merging extra warnings. */
 function withValidation(
   event: MapEvent,
@@ -403,6 +629,156 @@ export const eventPageToolDefinitions: ToolDefinition[] = [
       ];
       // Return a compact summary, not the full event with every defaulted page
       // field — a huge token cost on every NPC (re-read via get_map_event).
+      const summary = summarizeCreatedEvent(event);
+      return warnings.length > 0 ? { event: summary, warnings } : { event: summary };
+    },
+  },
+  {
+    name: 'create_chest',
+    mutates: true,
+    description:
+      'Create a complete, placed treasure chest on a map in one call — the two-page self-switch idiom done correctly, so the chest can never be looted twice. Page 1 (closed) is an action-button, priority-`same` event that optionally shows `text`, gives the contents, then flips its self switch; page 2 (opened) is gated on that self switch, shows the opened graphic and does nothing. `kind` picks the payout: item/weapon/armor (needs `id`) or gold. On the RTP `!Chest` sheet the open/closed states are the *direction* rows of one character block (down = closed, up = open), which is what closedDirection/openedDirection default to. Throws if the item/weapon/armor `id` does not exist; warns (never blocks) on an unknown characterName or a chest with no graphic.',
+    inputSchema: {
+      mapId: z.number().int().positive().describe('The ID of the map to place the chest on'),
+      x: z.number().int().min(0).describe('X tile position'),
+      y: z.number().int().min(0).describe('Y tile position'),
+      kind: z
+        .enum(['item', 'weapon', 'armor', 'gold'])
+        .describe('What the chest gives; item/weapon/armor require `id`'),
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('The item/weapon/armor ID to give (omit for kind "gold")'),
+      amount: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('How many (or how much gold) to give; default 1'),
+      name: z.string().optional().describe('Event name (editor label); default "Chest"'),
+      characterName: z
+        .string()
+        .optional()
+        .describe('Chest sprite basename from list_assets("characters"), e.g. "!Chest"'),
+      characterIndex: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe('Which chest in the sheet (0-7); default 0'),
+      closedDirection: z
+        .enum(['down', 'left', 'right', 'up'])
+        .optional()
+        .describe('Direction row showing the CLOSED chest; default "down"'),
+      openedDirection: z
+        .enum(['down', 'left', 'right', 'up'])
+        .optional()
+        .describe('Direction row showing the OPENED chest; default "up"'),
+      text: z
+        .array(z.string())
+        .optional()
+        .describe('Optional message shown on opening, e.g. ["Found a Potion!"]'),
+      selfSwitch: z
+        .enum(['A', 'B', 'C', 'D'])
+        .optional()
+        .describe('Self switch channel marking the chest looted; default "A"'),
+    },
+    handler: async (ctx, args) => {
+      const options: CreateChestOptions = {
+        name: args.name,
+        id: args.id,
+        amount: args.amount,
+        characterName: args.characterName,
+        characterIndex: args.characterIndex,
+        closedDirection:
+          args.closedDirection !== undefined
+            ? DIRECTION_CODE[args.closedDirection as DirectionName]
+            : undefined,
+        openedDirection:
+          args.openedDirection !== undefined
+            ? DIRECTION_CODE[args.openedDirection as DirectionName]
+            : undefined,
+        text: args.text as string[] | undefined,
+        selfSwitch: args.selfSwitch as 'A' | 'B' | 'C' | 'D' | undefined,
+      };
+      const event = await createChest(
+        ctx.projectPath,
+        args.mapId,
+        args.x,
+        args.y,
+        args.kind as ChestKind,
+        options,
+      );
+      const warnings = [
+        ...missingGraphicWarnings(args.characterName),
+        ...(await characterNameWarnings(ctx.projectPath, args.characterName)),
+        ...(await actionButtonReachabilityWarnings(ctx.projectPath, args.mapId, event)),
+        ...validateEvent(event).warnings,
+      ];
+      const summary = summarizeCreatedEvent(event);
+      return warnings.length > 0 ? { event: summary, warnings } : { event: summary };
+    },
+  },
+  {
+    name: 'create_transfer',
+    mutates: true,
+    description:
+      'Create a complete, placed map-transfer event in one call, using whichever of the two working idioms you pick. `idiom: "action_button"` (default) makes a priority-`same` event the player faces and presses — the right shape for a solid landmark (building, dungeon mouth, door); `idiom: "player_touch"` makes an invisible priority-`below` doormat the player walks onto — for interior exits and map-edge gaps. `direction` is the facing the player lands with, `fade` the screen transition. Throws if the destination map does not exist; warns if the destination tile is outside that map, if the characterName is unknown, or if the event can never fire from where it sits.',
+    inputSchema: {
+      mapId: z.number().int().positive().describe('The ID of the map the trigger is placed on'),
+      x: z.number().int().min(0).describe('X tile position of the trigger'),
+      y: z.number().int().min(0).describe('Y tile position of the trigger'),
+      targetMapId: z.number().int().positive().describe('The ID of the destination map'),
+      targetX: z.number().int().min(0).describe('X tile the player lands on'),
+      targetY: z.number().int().min(0).describe('Y tile the player lands on'),
+      idiom: z
+        .enum(['action_button', 'player_touch'])
+        .optional()
+        .describe(
+          'action_button = face a solid landmark and press (priority same, default); player_touch = walk onto a doormat (priority below)',
+        ),
+      name: z.string().optional().describe('Event name (editor label); default "Transfer"'),
+      direction: z
+        .enum(['retain', 'down', 'left', 'right', 'up'])
+        .optional()
+        .describe('Facing after the transfer; default "retain"'),
+      fade: z
+        .enum(['black', 'white', 'none'])
+        .optional()
+        .describe('Screen fade during the transfer; default "black"'),
+      characterName: z
+        .string()
+        .optional()
+        .describe('Optional sprite basename (a doormat is normally left invisible)'),
+      characterIndex: z.number().int().min(0).optional().describe('Sprite index 0-7 in the sheet'),
+    },
+    handler: async (ctx, args) => {
+      const options: CreateTransferOptions = {
+        name: args.name,
+        idiom: args.idiom as TransferIdiom | undefined,
+        direction: args.direction as TransferDirection | undefined,
+        fade: args.fade as TransferFade | undefined,
+        characterName: args.characterName,
+        characterIndex: args.characterIndex,
+      };
+      const { event, warnings: transferWarnings } = await createTransfer(
+        ctx.projectPath,
+        args.mapId,
+        args.x,
+        args.y,
+        args.targetMapId,
+        args.targetX,
+        args.targetY,
+        options,
+      );
+      const warnings = [
+        ...transferWarnings,
+        ...(await characterNameWarnings(ctx.projectPath, args.characterName)),
+        ...(await actionButtonReachabilityWarnings(ctx.projectPath, args.mapId, event)),
+        ...validateEvent(event).warnings,
+      ];
       const summary = summarizeCreatedEvent(event);
       return warnings.length > 0 ? { event: summary, warnings } : { event: summary };
     },
