@@ -89,12 +89,16 @@ describe('lookupPluginCommand', () => {
 });
 
 describe('plugin tool handlers', () => {
-  it('list_plugin_commands returns the whole allowlist or one plugin', () => {
-    expect(listPluginCommands()).toBe(PLUGIN_COMMAND_REGISTRY);
-    expect(listPluginCommands('TextPicture')).toEqual({
+  it('list_plugin_commands returns the whole registry or one plugin', () => {
+    // The registry is passed in — the tool hands it the project scan merged over
+    // the built-in allowlist; here the allowlist alone stands in for it.
+    expect(listPluginCommands(PLUGIN_COMMAND_REGISTRY)).toBe(PLUGIN_COMMAND_REGISTRY);
+    expect(listPluginCommands(PLUGIN_COMMAND_REGISTRY, 'TextPicture')).toEqual({
       TextPicture: PLUGIN_COMMAND_REGISTRY.TextPicture,
     });
-    expect(() => listPluginCommands('Nope')).toThrow(/not in the known-plugin allowlist/);
+    expect(() => listPluginCommands(PLUGIN_COMMAND_REGISTRY, 'Nope')).toThrow(
+      /is not installed in this project/,
+    );
   });
 
   it('create_plugin_command is read-only and returns the command with warnings', async () => {

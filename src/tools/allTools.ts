@@ -20,6 +20,7 @@ import { systemToolDefinitions } from './systemTools.js';
 import { assetToolDefinitions } from './assetTools.js';
 import { listToolDefinitions } from './listTools.js';
 import { validationToolDefinitions } from './validationTools.js';
+import { pluginScanToolDefinitions } from './pluginScanTools.js';
 import { batchToolDefinitions } from './batchTools.js';
 
 /**
@@ -50,4 +51,5 @@ export const allToolDefinitions: ToolDefinition[] = [
   ...listToolDefinitions,
   ...validationToolDefinitions,
   ...batchToolDefinitions,
+  ...pluginScanToolDefinitions,
 ];

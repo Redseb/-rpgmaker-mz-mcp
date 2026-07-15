@@ -14,25 +14,40 @@ import { ValidationWarning } from './eventCommands.js';
 export const PLUGIN_COMMAND_CODE = 357;
 
 /** Spec for a single plugin-command argument. */
-interface PluginArgSpec {
+export interface PluginArgSpec {
   name: string;
   required?: boolean;
   description?: string;
+  /** The editor's display label (`@text`), when scanned from a plugin source. */
+  text?: string;
+  /** The arg's declared `@type` (number, common_event, struct<X>, …), when scanned. */
+  type?: string;
+  /** The arg's `@default`, when scanned. */
+  default?: string;
 }
 
 /** Spec for one registered plugin command. */
-interface PluginCommandSpec {
+export interface PluginCommandSpec {
   /** Display label the editor shows (parameters[2]); defaults to the command key. */
   label?: string;
   description?: string;
   args?: PluginArgSpec[];
 }
 
-/** A plugin's allowlist entry: a description plus its known commands. */
-interface PluginSpec {
+/** A plugin's registry entry: a description plus its known commands. */
+export interface PluginSpec {
   description?: string;
   commands: Record<string, PluginCommandSpec>;
+  /**
+   * Whether `js/plugins.js` has the plugin turned on. Only set by the project
+   * scanner — a built-in allowlist entry leaves it undefined (unknown), so only an
+   * explicit `false` is ever reported.
+   */
+  enabled?: boolean;
 }
+
+/** A plugin registry: plugin filename (no `.js`) → its spec. */
+export type PluginRegistry = Record<string, PluginSpec>;
 
 /**
  * Curated allowlist of known community/official plugin commands, keyed by plugin
@@ -43,7 +58,7 @@ interface PluginSpec {
  * that isn't listed here is still built fine — it just passes through with a soft
  * "not in the allowlist" warning (warn-by-default, mirroring unknown event codes).
  */
-export const PLUGIN_COMMAND_REGISTRY: Record<string, PluginSpec> = {
+export const PLUGIN_COMMAND_REGISTRY: PluginRegistry = {
   TextPicture: {
     description: 'Official MZ sample plugin — render text as a picture.',
     commands: {
@@ -62,12 +77,17 @@ export const PLUGIN_COMMAND_REGISTRY: Record<string, PluginSpec> = {
   },
 };
 
-/** Look up a plugin command spec, or `undefined` if the plugin/command is unlisted. */
+/**
+ * Look up a plugin command spec, or `undefined` if the plugin/command is unlisted.
+ * `registry` defaults to the built-in allowlist; the tools pass a project-scanned
+ * registry merged over it (see `tools/pluginScanTools.ts`).
+ */
 export function lookupPluginCommand(
   pluginName: string,
   commandName: string,
+  registry: PluginRegistry = PLUGIN_COMMAND_REGISTRY,
 ): PluginCommandSpec | undefined {
-  return PLUGIN_COMMAND_REGISTRY[pluginName]?.commands[commandName];
+  return registry[pluginName]?.commands[commandName];
 }
 
 /**
@@ -97,17 +117,28 @@ export function validatePluginCommand(
   commandName: string,
   args: Record<string, unknown>,
   path = `plugin command ${pluginName}: ${commandName}`,
+  registry: PluginRegistry = PLUGIN_COMMAND_REGISTRY,
 ): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
 
-  const plugin = PLUGIN_COMMAND_REGISTRY[pluginName];
+  const plugin = registry[pluginName];
   if (!plugin) {
     warnings.push({
       path,
       code: PLUGIN_COMMAND_CODE,
-      message: `plugin "${pluginName}" is not in the known-plugin allowlist (args passed through unchecked)`,
+      message: `plugin "${pluginName}" is not installed in this project and is not in the known-plugin allowlist (args passed through unchecked)`,
     });
     return warnings;
+  }
+
+  // A command on a plugin the editor has switched off never runs at all — a
+  // silent no-op that's easy to miss. Only the project scanner sets `enabled`.
+  if (plugin.enabled === false) {
+    warnings.push({
+      path,
+      code: PLUGIN_COMMAND_CODE,
+      message: `plugin "${pluginName}" is installed but disabled in js/plugins.js — this command will not run until it is enabled in the editor's Plugin Manager`,
+    });
   }
 
   const spec = plugin.commands[commandName];
@@ -157,8 +188,9 @@ export function buildPluginCommand(
   args: Record<string, unknown> = {},
   indent = 0,
   label?: string,
+  registry: PluginRegistry = PLUGIN_COMMAND_REGISTRY,
 ): EventCommand {
-  const spec = lookupPluginCommand(pluginName, commandName);
+  const spec = lookupPluginCommand(pluginName, commandName, registry);
   const displayLabel = label ?? spec?.label ?? commandName;
   return {
     code: PLUGIN_COMMAND_CODE,
