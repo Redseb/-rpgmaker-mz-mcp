@@ -44,14 +44,6 @@ export async function getActors(projectPath: string): Promise<(Actor | null)[]> 
 }
 
 /**
- * Get a specific actor by ID
- */
-export async function getActor(projectPath: string, actorId: number): Promise<Actor | null> {
-  const actors = await getActors(projectPath);
-  return actors.find((actor) => actor && actor.id === actorId) || null;
-}
-
-/**
  * Update an actor's data
  */
 export async function updateActor(
@@ -149,20 +141,6 @@ export async function searchActors(projectPath: string, searchTerm: string): Pro
 }
 
 export const actorToolDefinitions: ToolDefinition[] = [
-  {
-    name: 'get_actors',
-    description: 'Get all actors from the RPG Maker MZ project',
-    inputSchema: {},
-    handler: (ctx) => getActors(ctx.projectPath),
-  },
-  {
-    name: 'get_actor',
-    description: 'Get a specific actor by ID',
-    inputSchema: {
-      actorId: z.number().int().positive().describe('The ID of the actor to retrieve'),
-    },
-    handler: (ctx, args) => getActor(ctx.projectPath, args.actorId),
-  },
   {
     name: 'update_actor',
     mutates: true,

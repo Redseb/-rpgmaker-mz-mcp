@@ -146,12 +146,13 @@ applyToAutotileKind)` — or check with `get_tile_flags`/`check_passability`.
   splice with `insert_event_commands(mapId, eventId, pageIndex, commands)`.
   `call_common_event` returns `{ command }` like the `build_*` tools, so it composes
   the same way.
-- **Common-event bodies and troop pages** have their own insert path —
-  `append_event_commands(target, …)` with `target: "common_event"` (needs
-  `commonEventId`) or `"troop_page"` (needs `troopId` + `pageIndex`). Building the
-  whole `list` up front and passing it to `create_common_event`/`create_troop` also
-  works — append a `{ code: 0, indent: 0, parameters: [] }` terminator, or the write is
-  refused as unterminated.
+- **Common-event bodies and troop pages** take the same insert path, via `target`:
+  `insert_event_commands(target: "common_event", commonEventId, commands)` or
+  `insert_event_commands(target: "troop_page", troopId, pageIndex, commands)`.
+  (`target` defaults to `"map_event"`, which is why the map form above can omit it.)
+  Building the whole `list` up front and passing it to `create_common_event`/
+  `create_troop` also works — append a `{ code: 0, indent: 0, parameters: [] }`
+  terminator, or the write is refused as unterminated.
 
 ## Database & combat correctness
 

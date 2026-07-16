@@ -13,14 +13,6 @@ export async function getSkills(projectPath: string): Promise<(Skill | null)[]> 
   return await readJsonFile<(Skill | null)[]>(skillsPath);
 }
 
-/**
- * Get a specific skill by ID
- */
-export async function getSkill(projectPath: string, skillId: number): Promise<Skill | null> {
-  const skills = await getSkills(projectPath);
-  return skills.find((skill) => skill && skill.id === skillId) || null;
-}
-
 /** The caller-supplied skill shape accepted by both `create_skill` and `batch_create`. */
 export interface SkillInput {
   name: string;
@@ -353,14 +345,6 @@ export async function createStateSkill(
 }
 
 export const skillToolDefinitions: ToolDefinition[] = [
-  {
-    name: 'get_skill',
-    description: 'Get a specific skill by ID',
-    inputSchema: {
-      skillId: z.number().int().positive().describe('The ID of the skill to retrieve'),
-    },
-    handler: (ctx, args) => getSkill(ctx.projectPath, args.skillId),
-  },
   {
     name: 'create_skill',
     mutates: true,

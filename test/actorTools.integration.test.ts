@@ -2,13 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtemp, mkdir, rm, writeFile, readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import {
-  createActor,
-  getActors,
-  searchActors,
-  defaultActor,
-  actorToolDefinitions,
-} from '../src/tools/actorTools.js';
+import { createActor, getActors, searchActors, defaultActor } from '../src/tools/actorTools.js';
 import { Actor } from '../src/utils/types.js';
 
 /** Scaffold a minimal RPG Maker MZ project with a seeded Actors.json. */
@@ -86,11 +80,5 @@ describe('actor tools (integration)', () => {
     expect((await searchActors(dir, 'reid')).map((a) => a.id)).toEqual([1]);
     expect((await searchActors(dir, 'HERO')).map((a) => a.id)).toEqual([1]);
     expect(await searchActors(dir, 'nobody')).toEqual([]);
-  });
-
-  it('the get_actors tool handler dispatches to getActors', async () => {
-    const def = actorToolDefinitions.find((t) => t.name === 'get_actors')!;
-    const result = (await def.handler({ projectPath: dir }, {})) as (Actor | null)[];
-    expect(result[1]?.name).toBe('Reid');
   });
 });

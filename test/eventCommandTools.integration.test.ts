@@ -245,7 +245,7 @@ describe('insert_event_commands (integration)', () => {
 
   it('splices a built sequence before the end marker and persists compactly', async () => {
     const commands = showText(['Hello!'], { speakerName: 'Guard' });
-    await insertEventCommands(dir, 1, 1, 0, commands);
+    await insertEventCommands(dir, 'map_event', { mapId: 1, eventId: 1, pageIndex: 0, commands });
 
     const raw = await readFile(join(dir, 'data', 'Map001.json'), 'utf-8');
     expect(raw).not.toContain('\n');
@@ -260,9 +260,9 @@ describe('insert_event_commands (integration)', () => {
     const result = (await get('insert_event_commands').handler(
       { projectPath: dir },
       { mapId: 1, eventId: 1, pageIndex: 0, commands },
-    )) as { event: MapEvent; warnings?: unknown[] };
+    )) as { list: EventCommand[]; warnings?: unknown[] };
     expect(result.warnings).toBeUndefined();
-    expect(result.event.pages[0].list.map((c) => c.code)).toEqual([
+    expect(result.list.map((c) => c.code)).toEqual([
       102, 402, 101, 401, 0, 402, 101, 401, 0, 404, 0,
     ]);
   });
@@ -276,9 +276,9 @@ describe('insert_event_commands (integration)', () => {
     const result = (await get('insert_event_commands').handler(
       { projectPath: dir },
       { mapId: 1, eventId: 1, pageIndex: 0, commands },
-    )) as { event: MapEvent; warnings?: unknown[] };
+    )) as { list: EventCommand[]; warnings?: unknown[] };
     expect(result.warnings).toBeUndefined();
-    expect(result.event.pages[0].list.map((c) => c.code)).toEqual([121, 125, 129, 0]);
+    expect(result.list.map((c) => c.code)).toEqual([121, 125, 129, 0]);
   });
 
   it('inserts a presentation sequence and keeps the page valid (arity checks pass)', async () => {
@@ -292,9 +292,9 @@ describe('insert_event_commands (integration)', () => {
     const result = (await get('insert_event_commands').handler(
       { projectPath: dir },
       { mapId: 1, eventId: 1, pageIndex: 0, commands },
-    )) as { event: MapEvent; warnings?: unknown[] };
+    )) as { list: EventCommand[]; warnings?: unknown[] };
     expect(result.warnings).toBeUndefined();
-    expect(result.event.pages[0].list.map((c) => c.code)).toEqual([221, 249, 231, 212, 201, 0]);
+    expect(result.list.map((c) => c.code)).toEqual([221, 249, 231, 212, 201, 0]);
   });
 
   it('refuses a malformed inserted command and leaves the page untouched', async () => {
@@ -318,21 +318,30 @@ describe('insert_event_commands (integration)', () => {
         commands: [{ code: 401, parameters: [] }],
         force: true,
       },
-    )) as { event: MapEvent; warnings?: unknown[] };
+    )) as { list: EventCommand[]; warnings?: unknown[] };
     expect(result.warnings && result.warnings.length).toBeGreaterThan(0);
-    expect(result.event.pages[0].list.some((c) => c.code === 401)).toBe(true);
+    expect(result.list.some((c) => c.code === 401)).toBe(true);
   });
 
   it('rejects an unknown event or page', async () => {
     const commands = showText(['x']);
-    await expect(insertEventCommands(dir, 1, 99, 0, commands)).rejects.toThrow(/Event 99/);
-    await expect(insertEventCommands(dir, 1, 1, 5, commands)).rejects.toThrow(/Page 5/);
+    await expect(
+      insertEventCommands(dir, 'map_event', { mapId: 1, eventId: 99, pageIndex: 0, commands }),
+    ).rejects.toThrow(/Event 99/);
+    await expect(
+      insertEventCommands(dir, 'map_event', { mapId: 1, eventId: 1, pageIndex: 5, commands }),
+    ).rejects.toThrow(/Page 5/);
   });
 
   it('dry-run previews the write without touching disk', async () => {
     const context: CommitContext = { dryRun: true, commits: [] };
     await commitStore.run(context, async () => {
-      await insertEventCommands(dir, 1, 1, 0, showText(['hi']));
+      await insertEventCommands(dir, 'map_event', {
+        mapId: 1,
+        eventId: 1,
+        pageIndex: 0,
+        commands: showText(['hi']),
+      });
     });
     expect(context.commits.some((c) => c.path.endsWith('Map001.json'))).toBe(true);
     const map = JSON.parse(await readFile(join(dir, 'data', 'Map001.json'), 'utf-8')) as MapData;
@@ -360,7 +369,7 @@ describe('insert_event_commands (integration)', () => {
   });
 });
 
-describe('append_event_commands (integration)', () => {
+describe('insert_event_commands: non-map targets (integration)', () => {
   let dir: string;
 
   /** Scaffold a project seeded with one common event and one troop (single page). */
@@ -407,7 +416,7 @@ describe('append_event_commands (integration)', () => {
 
   it('inserts a built sequence into a common event body before its end marker', async () => {
     const commands = showText(['Resting...'], { speakerName: 'Inn' });
-    const result = (await get('append_event_commands').handler(
+    const result = (await get('insert_event_commands').handler(
       { projectPath: dir },
       { target: 'common_event', commonEventId: 1, commands },
     )) as { target: string; id: number; list: EventCommand[]; warnings?: unknown[] };
@@ -423,7 +432,7 @@ describe('append_event_commands (integration)', () => {
 
   it('inserts into a troop battle-event page', async () => {
     const commands = showText(['They ambush you!']);
-    const result = (await get('append_event_commands').handler(
+    const result = (await get('insert_event_commands').handler(
       { projectPath: dir },
       { target: 'troop_page', troopId: 1, pageIndex: 0, commands },
     )) as { target: string; list: EventCommand[] };
@@ -432,7 +441,7 @@ describe('append_event_commands (integration)', () => {
   });
 
   it('throws on a missing target or missing required target fields', async () => {
-    const h = get('append_event_commands').handler;
+    const h = get('insert_event_commands').handler;
     await expect(
       h({ projectPath: dir }, { target: 'common_event', commonEventId: 99, commands: [] }),
     ).rejects.toThrow(/Common event 99/);
@@ -447,7 +456,7 @@ describe('append_event_commands (integration)', () => {
   it('dry-run previews the common-event write without touching disk', async () => {
     const context: CommitContext = { dryRun: true, commits: [] };
     await commitStore.run(context, async () => {
-      await get('append_event_commands').handler(
+      await get('insert_event_commands').handler(
         { projectPath: dir },
         { target: 'common_event', commonEventId: 1, commands: showText(['hi']) },
       );
@@ -461,7 +470,9 @@ describe('append_event_commands (integration)', () => {
     expect(ces[1]!.list.map((c) => c.code)).toEqual([0]); // untouched
   });
 
-  it('is marked as mutating', () => {
-    expect(get('append_event_commands').mutates).toBe(true);
+  it('defaults to the map_event target when none is given', async () => {
+    await expect(
+      get('insert_event_commands').handler({ projectPath: dir }, { commands: [] }),
+    ).rejects.toThrow(/mapId is required for target "map_event"/);
   });
 });

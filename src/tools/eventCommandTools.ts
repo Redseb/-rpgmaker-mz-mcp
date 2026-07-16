@@ -1,14 +1,14 @@
 import { z } from 'zod';
 import { getMapPath, getDataPath } from '../utils/fileHandler.js';
 import { commitChange } from '../utils/commit.js';
-import { MapEvent, EventCommand } from '../utils/types.js';
+import { EventCommand } from '../utils/types.js';
 import { ToolDefinition } from '../registry.js';
 import {
   validateCommandList,
   textLineWidthWarnings,
   ValidationWarning,
 } from '../validation/eventCommands.js';
-import { PreCommit, writeGate } from '../validation/gate.js';
+import { writeGate } from '../validation/gate.js';
 import { eventWriteGate, getMap } from './mapTools.js';
 import { getCommonEvents } from './commonEventTools.js';
 import { getTroops } from './battleTools.js';
@@ -97,101 +97,151 @@ function asCommandGroups(raw: unknown): EventCommand[][] | undefined {
   return raw.map((group) => asCommands(group));
 }
 
-/**
- * Insert a pre-built sequence of event commands into an event page's command list
- * — the mutating companion to the read-only builders below. Splices before the
- * page's code-0 end marker (or at `position`), then writes through the commit
- * choke point. This is how a Show Text / Show Choices / Conditional Branch block
- * built by the builders actually lands on a map.
- */
-export async function insertEventCommands(
-  projectPath: string,
-  mapId: number,
-  eventId: number,
-  pageIndex: number,
-  commands: EventCommand[],
-  position?: number,
-  precommit?: PreCommit<MapEvent>,
-): Promise<MapEvent> {
-  const map = await getMap(projectPath, mapId);
+/** The three homes an EventCommand list can have in an MZ project. */
+export type CommandListTarget = 'map_event' | 'common_event' | 'troop_page';
 
-  if (!map.events[eventId]) {
-    throw new Error(`Event ${eventId} not found on map ${mapId}`);
-  }
-  const event = map.events[eventId]!;
+export interface InsertEventCommandsOptions {
+  mapId?: number;
+  eventId?: number;
+  commonEventId?: number;
+  troopId?: number;
+  pageIndex?: number;
+  commands: EventCommand[];
+  position?: number;
+  force?: boolean;
+}
 
-  if (!event.pages[pageIndex]) {
-    throw new Error(`Page ${pageIndex} not found on event ${eventId}`);
-  }
-  spliceIntoList(event.pages[pageIndex].list, commands, position);
-
-  await precommit?.(event);
-
-  await commitChange(getMapPath(projectPath, mapId), map);
-  return event;
+export interface InsertEventCommandsResult {
+  target: CommandListTarget;
+  id: number;
+  list: EventCommand[];
+  warnings?: ValidationWarning[];
 }
 
 /**
- * Insert a pre-built command sequence into a COMMON EVENT body or a TROOP
- * battle-event page — the builder→insert path for the two command lists that
- * aren't map event pages (P2-7). Both reuse the map-page EventCommand format, so
- * `validateCommandList` applies directly. Splices before the list's code-0 end
- * marker (or at `position`) and writes through the commit choke point.
+ * One command list resolved from a target + its ids: the list to splice into,
+ * the file and in-memory root to commit, and the write gate that guards it.
  *
- * The resulting list is validated **before** the commit: a structurally invalid
- * result is refused and nothing is written (unless `opts.force`).
+ * `precommit` is a thunk rather than a value-taking hook because the three
+ * targets gate over different values — a map event validates as a whole event
+ * (its page graphics and reachability matter), while a common event or troop
+ * page has nothing to validate but the list itself.
  */
-export async function appendEventCommands(
+interface CommandListSite {
+  id: number;
+  list: EventCommand[];
+  file: string;
+  root: unknown;
+  precommit: () => Promise<void>;
+  respond: <R extends object>(result: R) => R & { warnings?: ValidationWarning[] };
+}
+
+function requiredArg<T>(value: T | undefined, name: string, target: CommandListTarget): T {
+  if (value === undefined) {
+    throw new Error(`${name} is required for target "${target}"`);
+  }
+  return value;
+}
+
+/** Locate the command list a target names, without touching it yet. */
+async function resolveCommandList(
   projectPath: string,
-  target: 'common_event' | 'troop_page',
-  opts: {
-    commonEventId?: number;
-    troopId?: number;
-    pageIndex?: number;
-    commands: EventCommand[];
-    position?: number;
-    force?: boolean;
-  },
-): Promise<{ target: string; id: number; list: EventCommand[]; warnings?: ValidationWarning[] }> {
-  if (target === 'common_event') {
-    if (opts.commonEventId === undefined) {
-      throw new Error('commonEventId is required for target "common_event"');
+  target: CommandListTarget,
+  opts: InsertEventCommandsOptions,
+): Promise<CommandListSite> {
+  if (target === 'map_event') {
+    const mapId = requiredArg(opts.mapId, 'mapId', target);
+    const eventId = requiredArg(opts.eventId, 'eventId', target);
+    const pageIndex = requiredArg(opts.pageIndex, 'pageIndex', target);
+    const map = await getMap(projectPath, mapId);
+    const event = map.events[eventId];
+    if (!event) {
+      throw new Error(`Event ${eventId} not found on map ${mapId}`);
     }
-    const commonEvents = await getCommonEvents(projectPath);
-    const ce = commonEvents.find((c) => c && c.id === opts.commonEventId);
-    if (!ce) {
-      throw new Error(`Common event ${opts.commonEventId} does not exist`);
+    const page = event.pages[pageIndex];
+    if (!page) {
+      throw new Error(`Page ${pageIndex} not found on event ${eventId}`);
     }
-    const gate = writeGate<EventCommand[]>(opts.force, `common event ${ce.id}`, (list) =>
-      validateCommandList(list, `common event ${ce.id}`),
-    );
-    spliceIntoList(ce.list, opts.commands, opts.position);
-    await gate.precommit(ce.list);
-    await commitChange(getDataPath(projectPath, 'CommonEvents.json'), commonEvents);
-    return gate.respond({ target, id: ce.id, list: ce.list });
+    const gate = eventWriteGate(projectPath, mapId, opts.force);
+    return {
+      id: eventId,
+      list: page.list,
+      file: getMapPath(projectPath, mapId),
+      root: map,
+      precommit: () => gate.precommit(event) as Promise<void>,
+      respond: gate.respond,
+    };
   }
 
-  // target === 'troop_page'
-  if (opts.troopId === undefined || opts.pageIndex === undefined) {
-    throw new Error('troopId and pageIndex are required for target "troop_page"');
+  if (target === 'common_event') {
+    const commonEventId = requiredArg(opts.commonEventId, 'commonEventId', target);
+    const commonEvents = await getCommonEvents(projectPath);
+    const ce = commonEvents.find((c) => c && c.id === commonEventId);
+    if (!ce) {
+      throw new Error(`Common event ${commonEventId} does not exist`);
+    }
+    const subject = `common event ${ce.id}`;
+    const gate = writeGate<EventCommand[]>(opts.force, subject, (list) =>
+      validateCommandList(list, subject),
+    );
+    return {
+      id: ce.id,
+      list: ce.list,
+      file: getDataPath(projectPath, 'CommonEvents.json'),
+      root: commonEvents,
+      precommit: () => gate.precommit(ce.list) as Promise<void>,
+      respond: gate.respond,
+    };
   }
+
+  const troopId = requiredArg(opts.troopId, 'troopId', target);
+  const pageIndex = requiredArg(opts.pageIndex, 'pageIndex', target);
   const troops = await getTroops(projectPath);
-  const troop = troops.find((t) => t && t.id === opts.troopId);
+  const troop = troops.find((t) => t && t.id === troopId);
   if (!troop) {
-    throw new Error(`Troop ${opts.troopId} does not exist`);
+    throw new Error(`Troop ${troopId} does not exist`);
   }
-  const page = troop.pages[opts.pageIndex];
+  const page = troop.pages[pageIndex];
   if (!page) {
-    throw new Error(`Page ${opts.pageIndex} not found on troop ${opts.troopId}`);
+    throw new Error(`Page ${pageIndex} not found on troop ${troopId}`);
   }
-  const path = `troop ${troop.id} / page ${opts.pageIndex}`;
-  const gate = writeGate<EventCommand[]>(opts.force, path, (list) =>
-    validateCommandList(list, path),
+  const subject = `troop ${troop.id} / page ${pageIndex}`;
+  const gate = writeGate<EventCommand[]>(opts.force, subject, (list) =>
+    validateCommandList(list, subject),
   );
-  spliceIntoList(page.list, opts.commands, opts.position);
-  await gate.precommit(page.list);
-  await commitChange(getDataPath(projectPath, 'Troops.json'), troops);
-  return gate.respond({ target, id: troop.id, list: page.list });
+  return {
+    id: troop.id,
+    list: page.list,
+    file: getDataPath(projectPath, 'Troops.json'),
+    root: troops,
+    precommit: () => gate.precommit(page.list) as Promise<void>,
+    respond: gate.respond,
+  };
+}
+
+/**
+ * Insert a pre-built command sequence into any of the three command lists an MZ
+ * project has — a map event page, a common event body, or a troop battle-event
+ * page — the mutating companion to the read-only builders below. This is how a
+ * Show Text / Show Choices / Conditional Branch block built by the builders
+ * actually lands in the game.
+ *
+ * All three lists share the EventCommand format, so there is one splice path:
+ * resolve the list, splice before its code-0 end marker (or at `position`),
+ * gate, commit. The resulting list is validated **before** the commit — a
+ * structurally invalid result is refused and nothing is written (unless
+ * `opts.force`).
+ */
+export async function insertEventCommands(
+  projectPath: string,
+  target: CommandListTarget,
+  opts: InsertEventCommandsOptions,
+): Promise<InsertEventCommandsResult> {
+  const site = await resolveCommandList(projectPath, target, opts);
+  spliceIntoList(site.list, opts.commands, opts.position);
+  await site.precommit();
+  await commitChange(site.file, site.root);
+  return site.respond({ target, id: site.id, list: site.list });
 }
 
 /** Zod shape for a Conditional Branch condition (validated further in the builder). */
@@ -979,54 +1029,27 @@ export const eventCommandToolDefinitions: ToolDefinition[] = [
     mutates: true,
     forceable: true,
     description:
-      'Insert a pre-built sequence of event commands (from the build_* builders) into an event page’s command list, splicing before the page’s end marker (or at `position`). The mutating companion to the read-only builders. The resulting page is validated before writing: a structural problem (wrong parameter count for a command code, a list left unterminated) refuses the write and saves nothing — pass force: true to override. Advisory findings (unrecognized code, over-long text line) are returned as `warnings` and never block.',
+      'Insert a pre-built sequence of event commands (from the build_* builders) into any of the three command lists an MZ project has — the mutating companion to the read-only builders. Splices before the list’s end marker (or at `position`). target "map_event" (the default) needs mapId + eventId + pageIndex; "common_event" needs commonEventId; "troop_page" needs troopId + pageIndex. The resulting list is validated before writing: a structural problem (wrong parameter count for a command code, a list left unterminated) refuses the write and saves nothing — pass force: true to override. Advisory findings (unrecognized code, over-long text line) are returned as `warnings` and never block. Returns { target, id, list, warnings? }.',
     inputSchema: {
-      mapId: z.number().int().positive().describe('The ID of the map'),
-      eventId: z.number().int().positive().describe('The ID of the event'),
-      pageIndex: z.number().int().min(0).describe('Zero-based page index'),
-      commands: z
-        .array(eventCommandShape)
-        .describe('The event commands to insert (e.g. the `commands` from a build_* tool)'),
-      position: z
+      target: z
+        .enum(['map_event', 'common_event', 'troop_page'])
+        .optional()
+        .describe('Which command list to insert into (default map_event)'),
+      mapId: z.number().int().positive().optional().describe('target "map_event": the map id'),
+      eventId: z.number().int().positive().optional().describe('target "map_event": the event id'),
+      commonEventId: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('target "common_event": the common event id'),
+      troopId: z.number().int().positive().optional().describe('target "troop_page": the troop id'),
+      pageIndex: z
         .number()
         .int()
         .min(0)
         .optional()
-        .describe('Insertion index; defaults to the end of the list'),
-    },
-    handler: async (ctx, args) => {
-      const gate = eventWriteGate(ctx.projectPath, args.mapId, args.force);
-      const event = await insertEventCommands(
-        ctx.projectPath,
-        args.mapId,
-        args.eventId,
-        args.pageIndex,
-        asCommands(args.commands),
-        args.position,
-        gate.precommit,
-      );
-      return gate.respond({ event });
-    },
-  },
-  {
-    name: 'append_event_commands',
-    mutates: true,
-    forceable: true,
-    description:
-      'Insert a pre-built command sequence (from the build_* builders) into a COMMON EVENT body or a TROOP battle-event page — the insert path for the two command lists that are NOT map event pages (use insert_event_commands for those). Splices before the list end marker (or at `position`). target "common_event" needs commonEventId; target "troop_page" needs troopId + pageIndex. The resulting list is validated before writing: a structural problem refuses the write and saves nothing — pass force: true to override.',
-    inputSchema: {
-      target: z.enum(['common_event', 'troop_page']).describe('Which command list to insert into'),
-      commonEventId: z
-        .number()
-        .int()
-        .optional()
-        .describe('target "common_event": the common event id'),
-      troopId: z.number().int().optional().describe('target "troop_page": the troop id'),
-      pageIndex: z
-        .number()
-        .int()
-        .optional()
-        .describe('target "troop_page": zero-based battle-event page index'),
+        .describe('target "map_event"/"troop_page": zero-based page index'),
       commands: z
         .array(eventCommandShape)
         .describe('The event commands to insert (e.g. the `commands` from a build_* tool)'),
@@ -1038,7 +1061,9 @@ export const eventCommandToolDefinitions: ToolDefinition[] = [
         .describe('Insertion index; defaults to the end of the list'),
     },
     handler: (ctx, args) =>
-      appendEventCommands(ctx.projectPath, args.target, {
+      insertEventCommands(ctx.projectPath, (args.target ?? 'map_event') as CommandListTarget, {
+        mapId: args.mapId,
+        eventId: args.eventId,
         commonEventId: args.commonEventId,
         troopId: args.troopId,
         pageIndex: args.pageIndex,

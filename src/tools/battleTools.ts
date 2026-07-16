@@ -293,12 +293,6 @@ const troopMemberSchema = z.object({
 
 export const battleToolDefinitions: ToolDefinition[] = [
   {
-    name: 'get_enemies',
-    description: 'Get all enemies from the project (data/Enemies.json)',
-    inputSchema: {},
-    handler: (ctx) => getEnemies(ctx.projectPath),
-  },
-  {
     name: 'create_enemy',
     mutates: true,
     description:
@@ -349,12 +343,6 @@ export const battleToolDefinitions: ToolDefinition[] = [
         ctx.projectPath,
         await updateEnemy(ctx.projectPath, args.enemyId, args.updates),
       ),
-  },
-  {
-    name: 'get_troops',
-    description: 'Get all troops from the project (data/Troops.json)',
-    inputSchema: {},
-    handler: (ctx) => getTroops(ctx.projectPath),
   },
   {
     name: 'create_troop',

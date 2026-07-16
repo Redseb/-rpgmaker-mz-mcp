@@ -24,6 +24,46 @@ export const LISTABLE_FILES = {
 
 export type ListableType = keyof typeof LISTABLE_FILES;
 
+/**
+ * The subset of {@link LISTABLE_FILES} that `get_database` dumps in full. Two
+ * listable tables are deliberately absent: `maps` is an index, not a record
+ * table (`get_map_infos` / `get_map` own it), and a raw `tilesets` dump carries
+ * an 8192-entry `flags` array per tileset — `get_tilesets` summarizes it and
+ * `get_tile_flags` decodes single entries instead.
+ */
+export const DATABASE_TYPES = [
+  'actors',
+  'classes',
+  'items',
+  'weapons',
+  'armors',
+  'skills',
+  'enemies',
+  'troops',
+  'states',
+  'common_events',
+] as const;
+
+export type DatabaseType = (typeof DATABASE_TYPES)[number];
+
+/**
+ * Read one database table in full, or a single record from it by id.
+ *
+ * Every table is a 1-indexed array whose slot 0 is null, so one generic reader
+ * replaces the ten per-table `get_*` dumps that each cost a client a tool slot.
+ * The return shapes are the ones those tools had: the raw array (slot-0 null
+ * included) for a whole table, the record or `null` for a lookup that misses.
+ */
+export async function getDatabase<T extends { id: number }>(
+  projectPath: string,
+  type: DatabaseType,
+  id?: number,
+): Promise<(T | null)[] | T | null> {
+  const records = await readJsonFile<(T | null)[]>(getDataPath(projectPath, LISTABLE_FILES[type]));
+  if (id === undefined) return records;
+  return records.find((record) => record && record.id === id) ?? null;
+}
+
 export interface NamedEntry {
   id: number;
   name: string;
@@ -69,5 +109,24 @@ export const listToolDefinitions: ToolDefinition[] = [
         ),
     },
     handler: (ctx, args) => listNames(ctx.projectPath, args.type),
+  },
+  {
+    name: 'get_database',
+    description:
+      'Read a database table in full: actors, classes, items, weapons, armors, skills, enemies, troops, states, or common_events. Returns the raw 1-indexed array (slot 0 is null), or — with `id` — that single record, or null if no such record exists. These are full records: prefer list_names for an id→name index, or search_actors/search_items/search_skills to find records by name, and reach for this only when you need every field. Maps and tilesets are not here: use get_map_infos/get_map and get_tilesets/get_tile_flags. Read-only.',
+    inputSchema: {
+      type: z
+        .enum(DATABASE_TYPES)
+        .describe(
+          'Which table to read: actors, classes, items, weapons, armors, skills, enemies, troops, states, or common_events.',
+        ),
+      id: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe('Return just this record (null if missing); omitted = the whole table'),
+    },
+    handler: (ctx, args) => getDatabase(ctx.projectPath, args.type, args.id),
   },
 ];

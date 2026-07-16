@@ -114,12 +114,6 @@ export async function callCommonEvent(
 
 export const commonEventToolDefinitions: ToolDefinition[] = [
   {
-    name: 'get_common_events',
-    description: 'Get all common events from the project (data/CommonEvents.json)',
-    inputSchema: {},
-    handler: (ctx) => getCommonEvents(ctx.projectPath),
-  },
-  {
     name: 'create_common_event',
     mutates: true,
     forceable: true,

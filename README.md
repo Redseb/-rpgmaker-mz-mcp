@@ -5,13 +5,13 @@
 # RPG Maker MZ MCP Server
 
 [![CI](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml)
-[![Tools](https://img.shields.io/badge/tools-123-e94560.svg)](#available-tools)
+[![Tools](https://img.shields.io/badge/tools-111-e94560.svg)](#available-tools)
 [![MCP](https://img.shields.io/badge/MCP-stdio-e94560.svg)](https://modelcontextprotocol.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
 [![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-3fa796.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3fa796.svg)](#license)
 
-**123 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+**111 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
 
 _"Add a town under the world map, paint it with grass, and drop in a shopkeeper who sells potions"_ → done, in-project, no editor clicks.
 
@@ -114,44 +114,44 @@ Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_
 
 ## Available tools
 
-All 123 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)); those that can refuse a structurally invalid write also accept `force` (see [Event validation](#event-validation-throw-by-default)).
+All 111 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)); those that can refuse a structurally invalid write also accept `force` (see [Event validation](#event-validation-throw-by-default)).
 
 <details>
 <summary><strong>Expand the full tool reference</strong></summary>
 
 ### Actors
 
-- `get_actors`, `get_actor`, `create_actor`, `update_actor`, `search_actors`
+- `create_actor`, `update_actor`, `search_actors`
 
 ### Classes
 
-- `get_classes`, `create_class`, `update_class`
+- `create_class`, `update_class`
 - `add_class_learning` — attach a skill learned at a level (validates the skill, keeps learnings level-sorted)
 - `set_class_param_curve` — replace one of the 8 parameter growth rows
 
 ### Skills
 
-- `get_skills`, `get_skill`, `create_skill` (full control), `update_skill`, `search_skills`
+- `create_skill` (full control), `update_skill`, `search_skills`
 - `create_damage_skill`, `create_healing_skill`, `create_buff_skill`, `create_state_skill` — natural-language-friendly helpers for common skill types
 
 ### Items & equipment
 
-- `get_items`, `create_item`, `update_item`, `search_items`
-- `get_weapons`, `create_weapon`, `update_weapon`
-- `get_armors`, `create_armor`, `update_armor`
+- `create_item`, `update_item`, `search_items`
+- `create_weapon`, `update_weapon`
+- `create_armor`, `update_armor`
 
 ### States
 
-- `get_states`, `create_state`, `update_state`
+- `create_state`, `update_state`
 
 ### Enemies & troops
 
-- `get_enemies`, `create_enemy`, `update_enemy`
-- `get_troops`, `create_troop`, `update_troop` — `create_troop` validates that every member references an existing enemy
+- `create_enemy`, `update_enemy`
+- `create_troop`, `update_troop` — `create_troop` validates that every member references an existing enemy
 
 ### Common events
 
-- `get_common_events`, `create_common_event`, `update_common_event`
+- `create_common_event`, `update_common_event`
 - `call_common_event` — builds the code-117 call command and validates the target exists
 
 ### Maps & the map tree
@@ -178,13 +178,13 @@ All 123 tools, grouped by area. Tools that write to the project accept an option
 
 ### Event-command builders
 
-Read-only builders that return editor-faithful `EventCommand` sequences; land them on a page with `insert_event_commands`.
+Read-only builders that return editor-faithful `EventCommand` sequences; land them on a command list with `insert_event_commands`.
 
 - **Dialogue & flow:** `build_show_text` (101/401), `build_show_choices` (102/402–404), `build_conditional_branch` (111/411/412), `build_flow_command` (wait/exit/label/jump)
 - **Game state:** `build_control_switch` (121/123), `build_control_variable` (122), `build_change_gold` (125), `build_change_items` (126–128), `build_change_party_member` (129)
 - **Presentation & transitions:** `build_transfer_player` (201), `build_play_audio` (BGM/BGS/ME/SE), `build_screen_effect` (fade/tint/flash/shake), `build_picture` (show/erase), `build_character_effect` (animation/balloon)
 - **Scenes:** `build_battle_processing` (301), `build_shop_processing` (302/605), `build_name_input` (303), `build_change_actor` (HP/MP/state/recover/EXP/level, 311–316)
-- **Insertion:** `insert_event_commands` — splice a built sequence onto a page, then validate
+- **Insertion:** `insert_event_commands` — splice a built sequence into a map event page (the default `target`), a common event body, or a troop battle-event page, then validate
 
 ### Move routes
 
@@ -231,6 +231,7 @@ Read-only builders that return editor-faithful `EventCommand` sequences; land th
 ### Index & validation
 
 - `list_names` — cheap `{ id, name }` index for a table (actors, items, skills, maps, enemies, …)
+- `get_database` — full records from one table (actors, classes, items, weapons, armors, skills, enemies, troops, states, common_events), or a single record by `id`
 - `validate_event`, `validate_project` — event-command-shape validation (read-only)
 - `validate_references` — cross-file id-integrity audit (party→actor, transfer→map, effect→state/skill/common-event, drops→item, map-tree cycles, …)
 

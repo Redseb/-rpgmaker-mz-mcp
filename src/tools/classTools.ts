@@ -186,7 +186,7 @@ export async function setClassParamCurve(
  * its full 8×(maxLevel+1) `params` matrix, but echoing 800+ numbers back on every
  * edit (e.g. adding one skill learning) is pure token waste — so the tool response
  * replaces `params` with `maxLevel` plus a per-param first/last-level preview. A
- * caller that needs the whole curve can still `get_classes`.
+ * caller that needs the whole curve can still `get_database('classes')`.
  */
 export function summarizeClass(c: GameClass) {
   const { params, ...rest } = c;
@@ -250,12 +250,6 @@ async function withSkillTypeWarnings(projectPath: string, gameClass: GameClass) 
 }
 
 export const classToolDefinitions: ToolDefinition[] = [
-  {
-    name: 'get_classes',
-    description: 'Get all character classes from the project (data/Classes.json)',
-    inputSchema: {},
-    handler: (ctx) => getClasses(ctx.projectPath),
-  },
   {
     name: 'create_class',
     mutates: true,

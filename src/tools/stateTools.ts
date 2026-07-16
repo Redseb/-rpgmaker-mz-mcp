@@ -97,12 +97,6 @@ export async function updateState(
 
 export const stateToolDefinitions: ToolDefinition[] = [
   {
-    name: 'get_states',
-    description: 'Get all states (status conditions) from the project (data/States.json)',
-    inputSchema: {},
-    handler: (ctx) => getStates(ctx.projectPath),
-  },
-  {
     name: 'create_state',
     mutates: true,
     description:

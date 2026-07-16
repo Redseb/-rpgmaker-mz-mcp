@@ -325,30 +325,6 @@ export async function searchItems(projectPath: string, searchTerm: string): Prom
 
 export const itemToolDefinitions: ToolDefinition[] = [
   {
-    name: 'get_items',
-    description: 'Get all items from the project',
-    inputSchema: {},
-    handler: (ctx) => getItems(ctx.projectPath),
-  },
-  {
-    name: 'get_weapons',
-    description: 'Get all weapons from the project',
-    inputSchema: {},
-    handler: (ctx) => getWeapons(ctx.projectPath),
-  },
-  {
-    name: 'get_armors',
-    description: 'Get all armors from the project',
-    inputSchema: {},
-    handler: (ctx) => getArmors(ctx.projectPath),
-  },
-  {
-    name: 'get_skills',
-    description: 'Get all skills from the project',
-    inputSchema: {},
-    handler: (ctx) => getSkills(ctx.projectPath),
-  },
-  {
     name: 'create_item',
     mutates: true,
     description:
