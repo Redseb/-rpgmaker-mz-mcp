@@ -44,3 +44,7 @@ Thumbs.db
 # Local Claude notes
 CLAUDE.local.md
 IMPROVEMENTS.md
+
+# MCPB bundle build
+.mcpb-stage/
+*.mcpb

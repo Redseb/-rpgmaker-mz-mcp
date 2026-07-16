@@ -2,6 +2,14 @@
 
 Complete step-by-step guide to install and configure the RPG Maker MZ MCP Server.
 
+> **Shortcuts — most people don't need this guide:**
+>
+> - **Claude Code**: `claude plugin marketplace add Redseb/rpgmaker-mz-mcp` then `claude plugin install rpgmaker-mz@rpgmaker-mz-mcp` — installs the server and the authoring skills in one step and prompts for your project folder.
+> - **Claude Desktop**: download `rpgmaker-mz-mcp.mcpb` from [Releases](https://github.com/Redseb/rpgmaker-mz-mcp/releases) and open it with Claude Desktop.
+> - **Any MCP client**: configure `npx -y rpgmaker-mz-mcp@latest` as the command — no clone or build (see the README's Quick start).
+>
+> The walkthrough below is the manual, from-source path.
+
 ## Prerequisites
 
 - Node.js (version 18 or higher)

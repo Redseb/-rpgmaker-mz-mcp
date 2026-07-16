@@ -19,13 +19,32 @@ _"Add a town under the world map, paint it with grass, and drop in a shopkeeper 
 
 ## Quick start
 
+**Claude Code (recommended)** — installs the server *and* the authoring skills as one plugin:
+
 ```bash
-npm install && npm run build
-export RPGMAKER_PROJECT_PATH=/path/to/your/rpgmaker/project   # dir with game.rmmzproject + data/
-npm start
+claude plugin marketplace add Redseb/rpgmaker-mz-mcp
+claude plugin install rpgmaker-mz@rpgmaker-mz-mcp
 ```
 
-Then point any MCP client at `dist/index.js` (see [Configuration](#configuration)) and ask it to build your game. New here? Read [SETUP.md](SETUP.md) for the full walkthrough and [EXAMPLES.md](EXAMPLES.md) for end-to-end recipes.
+You'll be prompted for your RPG Maker MZ project directory (optional — you can also just ask Claude to `set_project` later).
+
+**Any other MCP client** — the server is on npm; no clone or build needed:
+
+```json
+{
+  "mcpServers": {
+    "rpgmaker-mz": {
+      "command": "npx",
+      "args": ["-y", "rpgmaker-mz-mcp@latest"],
+      "env": { "RPGMAKER_PROJECT_PATH": "/path/to/your/rpgmaker/project" }
+    }
+  }
+}
+```
+
+**Claude Desktop** — either the JSON config above, or download the one-click `rpgmaker-mz-mcp.mcpb` bundle from [Releases](https://github.com/Redseb/rpgmaker-mz-mcp/releases) and open it with Claude Desktop.
+
+New here? Read [SETUP.md](SETUP.md) for the full walkthrough and [EXAMPLES.md](EXAMPLES.md) for end-to-end recipes.
 
 ## Contents
 
@@ -67,6 +86,13 @@ Then point any MCP client at `dist/index.js` (see [Configuration](#configuration
 
 ## Installation
 
+Pick one:
+
+- **Claude Code plugin** *(recommended)* — `claude plugin marketplace add Redseb/rpgmaker-mz-mcp`, then `claude plugin install rpgmaker-mz@rpgmaker-mz-mcp`. This bundles the MCP server (run via npx from the npm package) together with the two authoring skills (`rpgmaker-authoring`, `tileset-catalog`) — the skills carry the judgment the tools don't enforce, so this is the full experience.
+- **npm package** — configure your MCP client to run `npx -y rpgmaker-mz-mcp@latest` (see [Quick start](#quick-start)). Tools only, no skills.
+- **MCPB bundle (Claude Desktop)** — download `rpgmaker-mz-mcp.mcpb` from [Releases](https://github.com/Redseb/rpgmaker-mz-mcp/releases), open it with Claude Desktop, and pick your project folder in the install dialog.
+- **From source** (development):
+
 ```bash
 npm install
 npm run build
@@ -98,14 +124,14 @@ npm start          # or: node dist/index.js
 
 ### Configuring in Claude Desktop
 
-Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_config.json` on Windows, `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+The easiest path is the `.mcpb` bundle from [Releases](https://github.com/Redseb/rpgmaker-mz-mcp/releases) — open it with Claude Desktop and pick your project folder. To configure by hand instead, add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_config.json` on Windows, `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
 ```json
 {
   "mcpServers": {
     "rpgmaker-mz": {
-      "command": "node",
-      "args": ["/path/to/rpgmaker-mz-mcp/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "rpgmaker-mz-mcp@latest"],
       "env": {
         "RPGMAKER_PROJECT_PATH": "/path/to/your/rpgmaker/project"
       }
@@ -113,6 +139,8 @@ Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_
   }
 }
 ```
+
+(For a from-source checkout, use `"command": "node"` with `"args": ["/path/to/rpgmaker-mz-mcp/dist/index.js"]` instead.)
 
 ## Available tools
 
@@ -315,6 +343,8 @@ npm run format        # Format with Prettier
 npm run format:check  # Check formatting (used in CI)
 npm test              # Vitest
 npm run sync:tools    # Re-stamp the tool count into the README + SVGs (see below)
+npm run sync:version  # Re-stamp package.json's version into the packaging manifests
+npm run bundle:mcpb   # Build the one-click Claude Desktop bundle (rpgmaker-mz-mcp.mcpb)
 ```
 
 During development you can skip the build entirely by running the server from source with [tsx](https://tsx.is): point your MCP client's `command` at `node_modules/.bin/tsx` with `src/index.ts` as the argument. Since tsx doesn't type-check, run `npm run typecheck` alongside lint and tests before committing.
@@ -324,6 +354,22 @@ CI runs lint, format check, tool-count sync check, tests, and build on every pus
 ### Keeping the tool count in sync
 
 The advertised tool count lives in a few human-facing spots — the README prose and badge, and the two SVGs in `assets/`. `npm run sync:tools` counts the real tools from `src/tools/` and re-stamps all of them, so bumping the number after adding a tool is one command. `npm run sync:tools:check` (run in CI) fails if any spot is stale.
+
+### Releasing
+
+`package.json` is the source of truth for the version; `npm run sync:version` stamps it into the plugin manifest (`.claude-plugin/plugin.json`), the MCP-registry metadata (`server.json`), and the MCPB manifest (`mcpb/manifest.json`). CI and `prepublishOnly` fail if they drift. A release is:
+
+```bash
+npm version minor           # or patch/major — bumps package.json + tags
+npm run sync:version        # stamp the new version into the other manifests
+git add -A && git commit --amend --no-edit && git push --follow-tags
+
+npm publish                 # publish to npm (runs the full gate via prepublishOnly)
+mcp-publisher publish       # update the MCP registry listing (server.json; login: mcp-publisher login github)
+npm run bundle:mcpb         # build rpgmaker-mz-mcp.mcpb and attach it to the GitHub release
+```
+
+The Claude Code plugin needs no separate publish — users' installs update from this repo (the plugin runs the npm package via `npx rpgmaker-mz-mcp@latest`, so bumping npm is what ships new tools).
 
 ## Project structure
 

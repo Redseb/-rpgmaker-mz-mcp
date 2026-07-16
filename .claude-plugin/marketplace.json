@@ -1,0 +1,17 @@
+{
+  "name": "rpgmaker-mz-mcp",
+  "description": "RPG Maker MZ authoring for Claude Code: MCP server + skills.",
+  "owner": {
+    "name": "Mikolaj Zyzanski"
+  },
+  "plugins": [
+    {
+      "name": "rpgmaker-mz",
+      "source": "./",
+      "description": "Author RPG Maker MZ games from Claude Code: 113 MCP tools for maps, tile painting, events, database editing, and validation, plus the authoring-judgment skills that make the output actually playable.",
+      "category": "game-development",
+      "license": "MIT",
+      "repository": "https://github.com/Redseb/rpgmaker-mz-mcp"
+    }
+  ]
+}

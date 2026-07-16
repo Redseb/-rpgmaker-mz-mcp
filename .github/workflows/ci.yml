@@ -18,5 +18,6 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm run sync:tools:check
+      - run: npm run sync:version:check
       - run: npm test
       - run: npm run build

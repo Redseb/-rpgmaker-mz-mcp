@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "rpgmaker-mz",
+  "displayName": "RPG Maker MZ",
+  "version": "1.0.0",
+  "description": "Author RPG Maker MZ games from Claude Code: 113 MCP tools for maps, tile painting, events, database editing, and validation, plus the authoring-judgment skills that make the output actually playable.",
+  "author": {
+    "name": "Mikolaj Zyzanski",
+    "url": "https://github.com/Redseb"
+  },
+  "homepage": "https://github.com/Redseb/rpgmaker-mz-mcp#readme",
+  "repository": "https://github.com/Redseb/rpgmaker-mz-mcp",
+  "license": "MIT",
+  "keywords": ["rpgmaker", "rpg-maker-mz", "game-development", "mcp"],
+  "skills": "./.claude/skills/",
+  "mcpServers": {
+    "rpgmaker-mz": {
+      "command": "npx",
+      "args": ["-y", "rpgmaker-mz-mcp@latest"],
+      "env": {
+        "RPGMAKER_PROJECT_PATH": "${user_config.project_path}"
+      }
+    }
+  },
+  "userConfig": {
+    "project_path": {
+      "type": "directory",
+      "title": "RPG Maker MZ project",
+      "description": "Your project directory (contains game.rmmzproject). Optional: leave empty and switch projects at runtime with the set_project tool.",
+      "required": false,
+      "default": ""
+    }
+  }
+}

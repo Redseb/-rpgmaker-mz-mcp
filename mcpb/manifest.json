@@ -1,0 +1,32 @@
+{
+  "manifest_version": "0.3",
+  "name": "rpgmaker-mz-mcp",
+  "display_name": "RPG Maker MZ",
+  "version": "1.0.0",
+  "description": "Author RPG Maker MZ games with Claude: maps, tile painting, events, database editing, and validation.",
+  "author": {
+    "name": "Mikolaj Zyzanski",
+    "url": "https://github.com/Redseb"
+  },
+  "homepage": "https://github.com/Redseb/rpgmaker-mz-mcp",
+  "license": "MIT",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "RPGMAKER_PROJECT_PATH": "${user_config.project_path}"
+      }
+    }
+  },
+  "user_config": {
+    "project_path": {
+      "type": "directory",
+      "title": "RPG Maker MZ project folder",
+      "description": "Your project directory — the folder containing game.rmmzproject. You can switch projects later by asking Claude to use the set_project tool.",
+      "required": true
+    }
+  }
+}

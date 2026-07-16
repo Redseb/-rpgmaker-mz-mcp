@@ -18,7 +18,12 @@
     "tmpdir",
     "Vitest",
     "esbuild",
-    "tseslint"
+    "tseslint",
+    "Mikolaj",
+    "Zyzanski",
+    "Redseb",
+    "mcpb",
+    "MCPB"
   ],
   "ignorePaths": ["node_modules", "dist", "package-lock.json", "coverage"]
 }
