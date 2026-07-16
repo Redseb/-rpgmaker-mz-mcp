@@ -7,6 +7,11 @@ import { z } from 'zod';
  */
 export interface ToolContext {
   projectPath: string;
+  /**
+   * Retarget the server at a different project directory for the rest of the
+   * session. Provided by the server entry point; only `set_project` calls it.
+   */
+  setProjectPath?: (path: string) => void;
 }
 
 /**
@@ -44,6 +49,13 @@ export interface ToolDefinition {
    * advertised argument would do nothing.
    */
   forceable?: boolean;
+  /**
+   * False for the few tools that must run without a configured project path
+   * (`get_project`/`set_project` — the tools you'd use to diagnose or fix an
+   * unset path). Everything else defaults to true and is gated on a valid
+   * project path before its handler runs.
+   */
+  requiresProject?: boolean;
 }
 
 /**

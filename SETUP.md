@@ -135,6 +135,8 @@ Example paths:
 - macOS: `/Users/YourName/Documents/RPGMZ/MyGame`
 - Linux: `/home/YourName/Documents/RPGMZ/MyGame`
 
+The configured path is only the startup default — once the server is running you can point it at a different project by asking Claude to use the `set_project` tool (and `get_project` shows which project is active). Switching games this way needs no config edit or restart.
+
 ### Step 6: Restart Claude Desktop
 
 After saving the configuration file, completely quit and restart Claude Desktop.

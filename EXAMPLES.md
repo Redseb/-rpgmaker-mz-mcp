@@ -617,7 +617,7 @@ If you encounter errors:
 
 1. **"Actor not found"**: Check the actor ID is correct
 2. **"Map not found"**: Verify the map ID exists in your project
-3. **"Invalid project path"**: Ensure RPGMAKER_PROJECT_PATH is set correctly
+3. **"Invalid project path"**: Ensure RPGMAKER_PROJECT_PATH is set correctly, or ask Claude to run `set_project` with the right directory (`get_project` shows what the server is currently pointed at)
 4. **File permission errors**: Make sure RPG Maker MZ editor is closed
 
 ## Combining Multiple Operations

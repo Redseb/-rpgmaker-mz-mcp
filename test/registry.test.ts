@@ -63,7 +63,15 @@ describe('schemaFor', () => {
 
 describe('tool registry contract', () => {
   it('exposes the expected number of tools', () => {
-    expect(allToolDefinitions.length).toBe(111);
+    expect(allToolDefinitions.length).toBe(113);
+  });
+
+  it('only the project-targeting tools opt out of the project-path gate', () => {
+    const optOuts = allToolDefinitions
+      .filter((t) => t.requiresProject === false)
+      .map((t) => t.name)
+      .sort();
+    expect(optOuts).toEqual(['get_project', 'set_project']);
   });
 
   it('has unique tool names', () => {

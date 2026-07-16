@@ -75,8 +75,15 @@ async function runTool(
   };
 }
 
-function buildServer(projectPath: string): McpServer {
+function buildServer(initialProjectPath: string): McpServer {
   const server = new McpServer({ name: 'rpgmaker-mz-server', version: serverVersion() });
+
+  // The project path is session state, not a constant: it starts from the env
+  // var and `set_project` may retarget it without a server restart.
+  let projectPath = initialProjectPath;
+  const setProjectPath = (path: string): void => {
+    projectPath = path;
+  };
 
   // Fail loudly on duplicate tool names before wiring anything up.
   buildRegistry(allToolDefinitions);
@@ -87,14 +94,18 @@ function buildServer(projectPath: string): McpServer {
       { description: def.description, inputSchema: schemaFor(def) },
       async (args: Record<string, unknown>): Promise<CallToolResult> => {
         try {
-          if (!projectPath) {
-            throw new Error('RPGMAKER_PROJECT_PATH environment variable not set');
-          }
-          if (!(await validateProjectPath(projectPath))) {
-            throw new Error('Invalid RPG Maker MZ project path');
+          if (def.requiresProject !== false) {
+            if (!projectPath) {
+              throw new Error(
+                'No project path set. Set RPGMAKER_PROJECT_PATH or call set_project.',
+              );
+            }
+            if (!(await validateProjectPath(projectPath))) {
+              throw new Error(`Invalid RPG Maker MZ project path: ${projectPath}`);
+            }
           }
 
-          const result = await runTool(def, { projectPath }, args);
+          const result = await runTool(def, { projectPath, setProjectPath }, args);
           return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

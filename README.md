@@ -5,13 +5,13 @@
 # RPG Maker MZ MCP Server
 
 [![CI](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Redseb/rpgmaker-mz-mcp/actions/workflows/ci.yml)
-[![Tools](https://img.shields.io/badge/tools-111-e94560.svg)](#available-tools)
+[![Tools](https://img.shields.io/badge/tools-113-e94560.svg)](#available-tools)
 [![MCP](https://img.shields.io/badge/MCP-stdio-e94560.svg)](https://modelcontextprotocol.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg)](tsconfig.json)
 [![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-3fa796.svg)](package.json)
 [![License: MIT](https://img.shields.io/badge/License-MIT-3fa796.svg)](#license)
 
-**111 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
+**113 tools** that let an AI assistant read and write an RPG Maker MZ project directly — actors, classes, skills, items, equipment, states, enemies, troops, common events, maps, tiles, tilesets, events, and system settings — instead of hand-editing everything in the editor.
 
 _"Add a town under the world map, paint it with grass, and drop in a shopkeeper who sells potions"_ → done, in-project, no editor clicks.
 
@@ -86,6 +86,8 @@ set RPGMAKER_PROJECT_PATH=C:\path\to\your\rpgmaker\project
 
 The path must point to a directory containing `game.rmmzproject` and a `data/` directory with `System.json`.
 
+The environment variable is only the startup default: the `set_project` tool can retarget a running server at a different project (and `get_project` reports the current one), so switching games doesn't require editing config or restarting.
+
 ## Usage
 
 ### Running the server
@@ -114,10 +116,15 @@ Add to your Claude Desktop configuration file (`%APPDATA%\Claude\claude_desktop_
 
 ## Available tools
 
-All 111 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)); those that can refuse a structurally invalid write also accept `force` (see [Event validation](#event-validation-throw-by-default)).
+All 113 tools, grouped by area. Tools that write to the project accept an optional `dryRun` argument (see [Dry-run preview](#dry-run-preview)); those that can refuse a structurally invalid write also accept `force` (see [Event validation](#event-validation-throw-by-default)).
 
 <details>
 <summary><strong>Expand the full tool reference</strong></summary>
+
+### Project targeting
+
+- `get_project` — the project the server is operating on: path, validity, game title
+- `set_project` — retarget the server at another project directory for the rest of the session (no restart; overrides `RPGMAKER_PROJECT_PATH`)
 
 ### Actors
 
@@ -300,14 +307,17 @@ Once configured, drive your project in natural language:
 
 ```bash
 npm run build         # Compile TypeScript to dist/
+npm run typecheck     # Type-check without emitting (tsc --noEmit)
 npm run dev           # Compile in watch mode
 npm run lint          # ESLint
 npm run lint:fix      # ESLint with autofix
 npm run format        # Format with Prettier
 npm run format:check  # Check formatting (used in CI)
-npm test              # Vitest (390 tests)
+npm test              # Vitest
 npm run sync:tools    # Re-stamp the tool count into the README + SVGs (see below)
 ```
+
+During development you can skip the build entirely by running the server from source with [tsx](https://tsx.is): point your MCP client's `command` at `node_modules/.bin/tsx` with `src/index.ts` as the argument. Since tsx doesn't type-check, run `npm run typecheck` alongside lint and tests before committing.
 
 CI runs lint, format check, tool-count sync check, tests, and build on every push and pull request (see `.github/workflows/ci.yml`).
 

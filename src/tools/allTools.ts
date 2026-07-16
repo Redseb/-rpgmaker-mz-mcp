@@ -1,4 +1,5 @@
 import { ToolDefinition } from '../registry.js';
+import { projectToolDefinitions } from './projectTools.js';
 import { actorToolDefinitions } from './actorTools.js';
 import { itemToolDefinitions } from './itemTools.js';
 import { skillToolDefinitions } from './skillTools.js';
@@ -29,6 +30,7 @@ import { batchToolDefinitions } from './batchTools.js';
  * server entry point and the tests without booting the stdio server.
  */
 export const allToolDefinitions: ToolDefinition[] = [
+  ...projectToolDefinitions,
   ...actorToolDefinitions,
   ...itemToolDefinitions,
   ...skillToolDefinitions,
