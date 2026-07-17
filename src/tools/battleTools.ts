@@ -345,6 +345,12 @@ export const battleToolDefinitions: ToolDefinition[] = [
       ),
   },
   {
+    name: 'search_enemies',
+    description: 'Search enemies by name (case-insensitive)',
+    inputSchema: { searchTerm: z.string().describe('The search term to find enemies') },
+    handler: (ctx, args) => searchEnemies(ctx.projectPath, args.searchTerm),
+  },
+  {
     name: 'create_troop',
     mutates: true,
     forceable: true,
@@ -392,5 +398,11 @@ export const battleToolDefinitions: ToolDefinition[] = [
       const troop = await updateTroop(ctx.projectPath, args.troopId, args.updates, gate.precommit);
       return gate.respond({ troop });
     },
+  },
+  {
+    name: 'search_troops',
+    description: 'Search troops by name (case-insensitive)',
+    inputSchema: { searchTerm: z.string().describe('The search term to find troops') },
+    handler: (ctx, args) => searchTroops(ctx.projectPath, args.searchTerm),
   },
 ];
