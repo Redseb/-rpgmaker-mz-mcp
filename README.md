@@ -252,6 +252,7 @@ Read-only builders that return editor-faithful `EventCommand` sequences; land th
 ### System & vocabulary
 
 - `get_system`, `get_game_title`, `update_game_title`
+- `get_title_screen`, `update_title_screen` — background layers, BGM, and the "draw game title" toggle
 - `get_variables`, `set_variable_name`, `get_switches`, `set_switch_name`
 - `get_starting_position`, `update_starting_position`
 - `get_party`, `set_party` — the starting party (`set_party` validates every actor id)
